@@ -347,22 +347,25 @@ function openStartMenu() {
 }
 
 function enterRealmFromMenu() {
-  const reqSeed = Number(menuSeedInput.value) || 842109;
-  const needRebuild = !hasEnteredOnce || !worldMap || worldMap.seed !== reqSeed || (engine && engine.build.archetypeId !== selectedArch);
   menuOpen = false;
   startMenuOverlay.style.display = 'none';
   hudOverlay.style.display = hudVisible ? 'block' : 'none';
-  updateMobileControlsVisibility();
-
-  if (needRebuild) {
-    generateRealm(reqSeed, selectedArch);
+  try {
+    const reqSeed = Number(menuSeedInput.value) || 842109;
+    const needRebuild = !hasEnteredOnce || !worldMap || worldMap.seed !== reqSeed || (engine && engine.build.archetypeId !== selectedArch);
+    updateMobileControlsVisibility();
+    if (needRebuild) {
+      generateRealm(reqSeed, selectedArch);
+    }
+    if (engine) {
+      engine.setWeatherMode(selectedWeather);
+    }
+    hasEnteredOnce = true;
+    applyLocalization();
+    savePrefs();
+  } catch (err) {
+    console.error('enterRealmFromMenu error:', err);
   }
-  if (engine) {
-    engine.setWeatherMode(selectedWeather);
-  }
-  hasEnteredOnce = true;
-  applyLocalization();
-  savePrefs();
 }
 
 function generateRealm(seed = Math.floor(Math.random() * 900000) + 100000, arch = selectedArch) {
@@ -879,7 +882,14 @@ canvas.addEventListener('touchmove', (e) => {
 menuRandSeedBtn.onclick = () => {
   menuSeedInput.value = String(Math.floor(Math.random() * 900000) + 100000);
 };
-menuStartBtn.onclick = () => enterRealmFromMenu();
+menuStartBtn.addEventListener('click', (e) => {
+  e.preventDefault();
+  enterRealmFromMenu();
+});
+menuStartBtn.addEventListener('touchend', (e) => {
+  e.preventDefault();
+  enterRealmFromMenu();
+}, { passive: false });
 
 document.querySelectorAll('.skill-slot').forEach((el) => {
   el.addEventListener('click', (e) => {
