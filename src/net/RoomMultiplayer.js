@@ -1,8 +1,6 @@
-import mqtt from 'mqtt';
-
 /**
- * Cross-Platform Room-Code Multiplayer over TLS WebSocket PubSub (MQTT WSS) + BroadcastChannel.
- * Eliminates mobile LTE <-> Wi-Fi WebRTC NAT/TURN failures; works everywhere on GitHub Pages.
+ * Cross-Platform Room-Code Multiplayer over pure browser WebSocket (MQTT 3.1.1 WSS) + BroadcastChannel.
+ * Zero Node polyfills (no Buffer, no process), tiny footprint, works identically on Desktop & Mobile browsers.
  */
 
 const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -10,6 +8,100 @@ const BROKERS = [
   'wss://broker.emqx.io:8084/mqtt',
   'wss://broker.hivemq.com:8884/mqtt'
 ];
+
+const enc = new TextEncoder();
+const dec = new TextDecoder();
+
+function encodeVarLen(len) {
+  const out = [];
+  let x = len;
+  do {
+    let b = x % 128;
+    x = Math.floor(x / 128);
+    if (x > 0) b |= 128;
+    out.push(b);
+  } while (x > 0);
+  return out;
+}
+
+function encodeUtf8(str) {
+  const bytes = enc.encode(str);
+  const out = new Uint8Array(2 + bytes.length);
+  out[0] = (bytes.length >> 8) & 0xff;
+  out[1] = bytes.length & 0xff;
+  out.set(bytes, 2);
+  return out;
+}
+
+function concatBytes(...arrays) {
+  let total = 0;
+  for (const a of arrays) total += a.length;
+  const out = new Uint8Array(total);
+  let off = 0;
+  for (const a of arrays) {
+    out.set(a, off);
+    off += a.length;
+  }
+  return out;
+}
+
+function mqttConnectPacket(clientId) {
+  const proto = encodeUtf8('MQTT');
+  const flags = new Uint8Array([4, 2, 0, 30]); // v3.1.1, cleanSession=1, keepAlive=30s
+  const cid = encodeUtf8(clientId);
+  const body = concatBytes(proto, flags, cid);
+  const hdr = new Uint8Array([0x10, ...encodeVarLen(body.length)]);
+  return concatBytes(hdr, body);
+}
+
+function mqttSubscribePacket(packetId, topics) {
+  const parts = [new Uint8Array([(packetId >> 8) & 0xff, packetId & 0xff])];
+  for (const t of topics) {
+    parts.push(encodeUtf8(t));
+    parts.push(new Uint8Array([0])); // QoS 0
+  }
+  const body = concatBytes(...parts);
+  const hdr = new Uint8Array([0x82, ...encodeVarLen(body.length)]);
+  return concatBytes(hdr, body);
+}
+
+function mqttPublishPacket(topic, payloadStr, retain = false) {
+  const tBytes = encodeUtf8(topic);
+  const pBytes = enc.encode(payloadStr);
+  const body = concatBytes(tBytes, pBytes);
+  const hdr = new Uint8Array([retain ? 0x31 : 0x30, ...encodeVarLen(body.length)]);
+  return concatBytes(hdr, body);
+}
+
+function parseMqttPackets(buf) {
+  const msgs = [];
+  let i = 0;
+  while (i + 2 <= buf.length) {
+    const type = buf[i] & 0xf0;
+    let mult = 1;
+    let len = 0;
+    let pos = i + 1;
+    let ok = true;
+    while (true) {
+      if (pos >= buf.length) { ok = false; break; }
+      const b = buf[pos++];
+      len += (b & 127) * mult;
+      if ((b & 128) === 0) break;
+      mult *= 128;
+    }
+    if (!ok || pos + len > buf.length) break;
+    if (type === 0x20) {
+      msgs.push({ kind: 'connack', rc: buf[pos + 1] });
+    } else if (type === 0x30) {
+      const tLen = (buf[pos] << 8) | buf[pos + 1];
+      const topic = dec.decode(buf.subarray(pos + 2, pos + 2 + tLen));
+      const payload = dec.decode(buf.subarray(pos + 2 + tLen, pos + len));
+      msgs.push({ kind: 'publish', topic, payload });
+    }
+    i = pos + len;
+  }
+  return { msgs, rest: buf.subarray(i) };
+}
 
 export function generateRoomCode(len = 5) {
   let out = '';
@@ -25,7 +117,7 @@ export class RoomMultiplayer {
     this.onRealmSync = onRealmSync || (() => {});
     this.onToast = onToast || (() => {});
 
-    this.client = null;
+    this.ws = null;
     this.isHost = false;
     this.roomCode = '';
     this.myId = 'p_' + Math.random().toString(36).slice(2, 9);
@@ -36,8 +128,11 @@ export class RoomMultiplayer {
     this.bc = null;
     this.lastSendTime = 0;
     this.lastMetaTime = 0;
+    this.lastPingTime = 0;
     this._connectTimer = null;
     this._connected = false;
+    this._rxBuf = new Uint8Array(0);
+    this._pktId = 1;
   }
 
   _clearTimer() {
@@ -54,10 +149,11 @@ export class RoomMultiplayer {
       try { this.bc.close(); } catch {}
       this.bc = null;
     }
-    if (this.client) {
-      try { this.client.end(true); } catch {}
-      this.client = null;
+    if (this.ws) {
+      try { this.ws.close(); } catch {}
+      this.ws = null;
     }
+    this._rxBuf = new Uint8Array(0);
     this.remoteMap.clear();
     this.roomCode = '';
     this.isHost = false;
@@ -100,9 +196,9 @@ export class RoomMultiplayer {
     this._clearTimer();
     this._connectTimer = setTimeout(() => {
       if (!this._connected && brokerIdx + 1 < BROKERS.length) {
-        if (this.client) {
-          try { this.client.end(true); } catch {}
-          this.client = null;
+        if (this.ws) {
+          try { this.ws.close(); } catch {}
+          this.ws = null;
         }
         this._connectToRoom(code, brokerIdx + 1);
       } else if (!this._connected) {
@@ -112,43 +208,50 @@ export class RoomMultiplayer {
     }, 6500);
 
     try {
-      const client = mqtt.connect(url, {
-        clientId: `ashen_${this.myId}_${Math.random().toString(16).slice(2, 6)}`,
-        clean: true,
-        connectTimeout: 6000,
-        reconnectPeriod: 2500
-      });
-      this.client = client;
+      const ws = new WebSocket(url, 'mqtt');
+      ws.binaryType = 'arraybuffer';
+      this.ws = ws;
+      this._rxBuf = new Uint8Array(0);
 
-      client.on('connect', () => {
-        this._connected = true;
-        this._clearTimer();
-        client.subscribe([topicState, topicMeta], { qos: 0 });
-        if (this.isHost) {
-          client.publish(topicMeta, JSON.stringify({ type: 'meta', seed: this.realmSeed, hostId: this.myId }), { qos: 0, retain: true });
-          this.onStatus('host', code, this.remoteMap.size + 1);
-          this.onToast(`ROOM ${code} READY`);
-        } else {
-          client.publish(topicMeta, JSON.stringify({ type: 'hello', senderId: this.myId }), { qos: 0 });
-          this.onStatus('guest', code, this.remoteMap.size + 1);
-          this.onToast(`CONNECTED: ${code}`);
+      ws.onopen = () => {
+        const cid = `ashen_${this.myId}_${Math.random().toString(16).slice(2, 6)}`;
+        ws.send(mqttConnectPacket(cid));
+      };
+
+      ws.onmessage = (ev) => {
+        const chunk = new Uint8Array(ev.data);
+        this._rxBuf = concatBytes(this._rxBuf, chunk);
+        const { msgs, rest } = parseMqttPackets(this._rxBuf);
+        this._rxBuf = rest;
+        for (const m of msgs) {
+          if (m.kind === 'connack' && m.rc === 0) {
+            this._connected = true;
+            this._clearTimer();
+            ws.send(mqttSubscribePacket(this._pktId++, [topicState, topicMeta]));
+            if (this.isHost) {
+              ws.send(mqttPublishPacket(topicMeta, JSON.stringify({ type: 'meta', seed: this.realmSeed, hostId: this.myId }), true));
+              this.onStatus('host', code, this.remoteMap.size + 1);
+              this.onToast(`ROOM ${code} READY`);
+            } else {
+              ws.send(mqttPublishPacket(topicMeta, JSON.stringify({ type: 'hello', senderId: this.myId }), false));
+              this.onStatus('guest', code, this.remoteMap.size + 1);
+              this.onToast(`CONNECTED: ${code}`);
+            }
+          } else if (m.kind === 'publish') {
+            try {
+              this._handleIncoming(JSON.parse(m.payload));
+            } catch {}
+          }
         }
-      });
+      };
 
-      client.on('message', (topic, payload) => {
-        try {
-          const msg = JSON.parse(payload.toString());
-          this._handleIncoming(msg);
-        } catch {}
-      });
-
-      client.on('error', () => {
+      ws.onerror = () => {
         if (!this._connected && brokerIdx + 1 < BROKERS.length) {
           this._clearTimer();
-          try { client.end(true); } catch {}
+          try { ws.close(); } catch {}
           this._connectToRoom(code, brokerIdx + 1);
         }
-      });
+      };
     } catch {
       this._clearTimer();
       this.onStatus('error', code);
@@ -179,10 +282,9 @@ export class RoomMultiplayer {
         this.realmSeed = msg.seed;
         this.onRealmSync(msg.seed);
       }
-    } else if (msg.type === 'hello' && this.isHost && this.client && this._connected) {
-      const topicMeta = `ashen-ascii/v1/room/${this.roomCode}/meta`;
+    } else if (msg.type === 'hello' && this.isHost && this.ws && this._connected && this.ws.readyState === 1) {
       try {
-        this.client.publish(topicMeta, JSON.stringify({ type: 'meta', seed: this.realmSeed, hostId: this.myId }), { qos: 0 });
+        this.ws.send(mqttPublishPacket(`ashen-ascii/v1/room/${this.roomCode}/meta`, JSON.stringify({ type: 'meta', seed: this.realmSeed, hostId: this.myId }), false));
       } catch {}
     } else if (msg.type === 'state' && msg.state) {
       const st = msg.state;
@@ -210,6 +312,11 @@ export class RoomMultiplayer {
       this.onStatus(this.isHost ? 'host' : 'guest', this.roomCode, this.remoteMap.size + 1);
     }
 
+    if (this.ws && this._connected && this.ws.readyState === 1 && nowMs - this.lastPingTime >= 15000) {
+      this.lastPingTime = nowMs;
+      try { this.ws.send(new Uint8Array([0xc0, 0x00])); } catch {}
+    }
+
     if (nowMs - this.lastSendTime >= 55) {
       this.lastSendTime = nowMs;
       const myPacket = { ...localState, id: this.myId, name: this.myName };
@@ -219,15 +326,17 @@ export class RoomMultiplayer {
         try { this.bc.postMessage(stateMsg); } catch {}
       }
 
-      if (this.client && this._connected) {
+      if (this.ws && this._connected && this.ws.readyState === 1) {
         try {
-          this.client.publish(`ashen-ascii/v1/room/${this.roomCode}/state`, JSON.stringify(stateMsg), { qos: 0 });
+          this.ws.send(mqttPublishPacket(`ashen-ascii/v1/room/${this.roomCode}/state`, JSON.stringify(stateMsg), false));
           if (this.isHost && nowMs - this.lastMetaTime >= 2500) {
             this.lastMetaTime = nowMs;
-            this.client.publish(
-              `ashen-ascii/v1/room/${this.roomCode}/meta`,
-              JSON.stringify({ type: 'meta', seed: this.realmSeed, hostId: this.myId }),
-              { qos: 0 }
+            this.ws.send(
+              mqttPublishPacket(
+                `ashen-ascii/v1/room/${this.roomCode}/meta`,
+                JSON.stringify({ type: 'meta', seed: this.realmSeed, hostId: this.myId }),
+                false
+              )
             );
           }
         } catch {}

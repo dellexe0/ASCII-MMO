@@ -14,7 +14,6 @@
     "vite": "^8.3.8"
   },
   "dependencies": {
-    "mqtt": "^5.16.1",
     "peerjs": "^1.5.5"
   }
 }
