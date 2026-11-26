@@ -1,25 +1,19 @@
+import { Peer } from 'peerjs';
+
 /**
- * Cross-Platform Room-Code Multiplayer via WebRTC (PeerJS) + BroadcastChannel local fallback.
- * Works directly on static hosting (GitHub Pages) across PC and mobile browsers!
+ * Cross-Platform Room-Code Multiplayer via bundled PeerJS (WebRTC) + BroadcastChannel local fallback.
+ * Works directly on static hosting (GitHub Pages) across PC and mobile browsers without external CDN scripts.
  */
 
-const PEERJS_CDN = 'https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js';
 const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 
-let peerJsPromise = null;
-function loadPeerJs() {
-  if (typeof window !== 'undefined' && window.Peer) return Promise.resolve(window.Peer);
-  if (peerJsPromise) return peerJsPromise;
-  peerJsPromise = new Promise((resolve, reject) => {
-    const sc = document.createElement('script');
-    sc.src = PEERJS_CDN;
-    sc.async = true;
-    sc.onload = () => (window.Peer ? resolve(window.Peer) : reject(new Error('PeerJS missing')));
-    sc.onerror = () => reject(new Error('Failed to load PeerJS'));
-    document.head.appendChild(sc);
-  });
-  return peerJsPromise;
-}
+const ICE_CONFIG = {
+  iceServers: [
+    { urls: 'stun:stun.l.google.com:19302' },
+    { urls: 'stun:stun1.l.google.com:19302' },
+    { urls: 'stun:stun.cloudflare.com:3478' }
+  ]
+};
 
 export function generateRoomCode(len = 5) {
   let out = '';
@@ -42,14 +36,23 @@ export class RoomMultiplayer {
     this.myName = 'Knight';
     this.realmSeed = 842109;
 
-    this.conns = new Map();       // peerId -> DataConnection (host side)
-    this.hostConn = null;         // DataConnection (guest side)
-    this.remoteMap = new Map();   // playerId -> state
-    this.bc = null;               // BroadcastChannel fallback for same-device tabs
+    this.conns = new Map();
+    this.hostConn = null;
+    this.remoteMap = new Map();
+    this.bc = null;
     this.lastSendTime = 0;
+    this._connectTimer = null;
+  }
+
+  _clearTimer() {
+    if (this._connectTimer) {
+      clearTimeout(this._connectTimer);
+      this._connectTimer = null;
+    }
   }
 
   disconnect() {
+    this._clearTimer();
     if (this.bc) {
       try { this.bc.close(); } catch {}
       this.bc = null;
@@ -72,7 +75,7 @@ export class RoomMultiplayer {
     this.onStatus('offline', '');
   }
 
-  async createRoom(seed, playerName = 'Knight') {
+  createRoom(seed, playerName = 'Knight') {
     this.disconnect();
     this.isHost = true;
     this.realmSeed = seed;
@@ -82,13 +85,22 @@ export class RoomMultiplayer {
 
     this._initBroadcastChannel(this.roomCode);
 
+    let opened = false;
+    this._connectTimer = setTimeout(() => {
+      if (!opened) {
+        this.onStatus('host', this.roomCode, 1);
+        this.onToast(`ROOM ${this.roomCode} (LOCAL READY)`);
+      }
+    }, 6500);
+
     try {
-      const Peer = await loadPeerJs();
       const hostPeerId = `ashen-ascii-room-${this.roomCode}-host`;
-      this.peer = new Peer(hostPeerId, { debug: 0 });
+      this.peer = new Peer(hostPeerId, { debug: 0, config: ICE_CONFIG });
 
       this.peer.on('open', () => {
-        this.onStatus('host', this.roomCode, 1);
+        opened = true;
+        this._clearTimer();
+        this.onStatus('host', this.roomCode, this.conns.size + 1);
         this.onToast(`ROOM ${this.roomCode} READY`);
       });
 
@@ -107,17 +119,22 @@ export class RoomMultiplayer {
       });
 
       this.peer.on('error', () => {
+        this._clearTimer();
         this.onStatus('host', this.roomCode, this.conns.size + 1);
       });
     } catch {
+      this._clearTimer();
       this.onStatus('host', this.roomCode, 1);
     }
     return this.roomCode;
   }
 
-  async joinRoom(code, playerName = 'Knight') {
+  joinRoom(code, playerName = 'Knight') {
     const clean = (code || '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
-    if (clean.length < 3) return false;
+    if (clean.length < 3) {
+      this.onStatus('error', 'CODE');
+      return false;
+    }
 
     this.disconnect();
     this.isHost = false;
@@ -127,16 +144,25 @@ export class RoomMultiplayer {
 
     this._initBroadcastChannel(clean);
 
+    let connected = false;
+    this._connectTimer = setTimeout(() => {
+      if (!connected) {
+        this.onStatus('error', `${clean} TIMEOUT`);
+        this.onToast(`ROOM ${clean} NOT FOUND / TIMEOUT`);
+      }
+    }, 7500);
+
     try {
-      const Peer = await loadPeerJs();
       const guestId = `ashen-ascii-${clean}-${this.myId}`;
-      this.peer = new Peer(guestId, { debug: 0 });
+      this.peer = new Peer(guestId, { debug: 0, config: ICE_CONFIG });
 
       this.peer.on('open', () => {
         const hostPeerId = `ashen-ascii-room-${clean}-host`;
-        const conn = this.peer.connect(hostPeerId, { reliable: false });
+        const conn = this.peer.connect(hostPeerId, { reliable: true });
         this.hostConn = conn;
         conn.on('open', () => {
+          connected = true;
+          this._clearTimer();
           this.onStatus('guest', clean, 2);
           this.onToast(`JOINED ROOM ${clean}`);
         });
@@ -146,14 +172,17 @@ export class RoomMultiplayer {
           this.onStatus('offline', '');
         });
         conn.on('error', () => {
+          this._clearTimer();
           this.onStatus('error', clean);
         });
       });
 
       this.peer.on('error', () => {
+        this._clearTimer();
         this.onStatus('error', clean);
       });
     } catch {
+      this._clearTimer();
       this.onStatus('error', clean);
       return false;
     }
@@ -180,6 +209,7 @@ export class RoomMultiplayer {
   _handleIncoming(msg, srcKey) {
     if (!msg || !msg.type) return;
     if (msg.type === 'welcome' && !this.isHost) {
+      this._clearTimer();
       if (msg.seed && msg.seed !== this.realmSeed) {
         this.realmSeed = msg.seed;
         this.onRealmSync(msg.seed);
@@ -203,7 +233,6 @@ export class RoomMultiplayer {
   tick(nowMs, localState) {
     if (!this.roomCode) return [];
 
-    // Prune timed-out peers (> 5s)
     for (const [k, v] of this.remoteMap.entries()) {
       if (nowMs - (v._seenAt || 0) > 5000) this.remoteMap.delete(k);
     }

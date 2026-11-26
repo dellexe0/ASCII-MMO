@@ -850,17 +850,23 @@ const multiplayer = new RoomMultiplayer({
 });
 
 if (mpCreateBtn) {
-  mpCreateBtn.onclick = async () => {
+  const onCreate = (e) => {
+    e.preventDefault();
     const seed = Number(menuSeedInput.value) || 842109;
-    const code = await multiplayer.createRoom(seed, mpNameInput ? mpNameInput.value : 'Knight');
+    const code = multiplayer.createRoom(seed, mpNameInput ? mpNameInput.value : 'Knight');
     if (mpCodeInput) mpCodeInput.value = code;
   };
+  mpCreateBtn.addEventListener('click', onCreate);
+  mpCreateBtn.addEventListener('touchend', onCreate, { passive: false });
 }
 if (mpJoinBtn) {
-  mpJoinBtn.onclick = async () => {
+  const onJoin = (e) => {
+    e.preventDefault();
     const code = mpCodeInput ? mpCodeInput.value : '';
-    await multiplayer.joinRoom(code, mpNameInput ? mpNameInput.value : 'Knight');
+    multiplayer.joinRoom(code, mpNameInput ? mpNameInput.value : 'Knight');
   };
+  mpJoinBtn.addEventListener('click', onJoin);
+  mpJoinBtn.addEventListener('touchend', onJoin, { passive: false });
 }
 
 // 2-Finger Pinch-to-Zoom for Phones on Game Canvas
