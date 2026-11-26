@@ -274,26 +274,26 @@ export class WorldEngine {
     const by = this.worldMap.waterfallBaseY + 10;
     const sprayChars = '~=*+✦.:';
     if (p.zone === 'top') {
-      p.x = cx + (this.rng() - 0.5) * 86;
-      p.y = topY + (this.rng() - 0.5) * 32;
-      p.vx = (this.rng() - 0.5) * 20;
-      p.vy = -12 + (this.rng() - 0.5) * 18;
-      p.life = 1.0 + this.rng() * 0.9;
-      p.baseSize = 11 + this.rng() * 11;
+      p.x = cx + (this.rng() - 0.5) * 76;
+      p.y = topY + (this.rng() - 0.5) * 24;
+      p.vx = (this.rng() - 0.5) * 16;
+      p.vy = -10 + (this.rng() - 0.5) * 14;
+      p.life = 0.9 + this.rng() * 0.7;
+      p.baseSize = 7.5 + this.rng() * 5.5;
     } else if (p.zone === 'stream') {
-      p.x = cx + (this.rng() - 0.5) * 64;
+      p.x = cx + (this.rng() - 0.5) * 54;
       p.y = topY + this.rng() * (by - topY);
-      p.vx = (this.rng() - 0.5) * 10;
+      p.vx = (this.rng() - 0.5) * 8;
       p.vy = 115 + this.rng() * 65;
-      p.life = 0.55 + this.rng() * 0.65;
-      p.baseSize = 9 + this.rng() * 9;
+      p.life = 0.55 + this.rng() * 0.55;
+      p.baseSize = 7.0 + this.rng() * 5.0;
     } else {
-      p.x = cx + (this.rng() - 0.5) * 95;
-      p.y = by + (this.rng() - 0.5) * 18;
-      p.vx = (p.x - cx) * (0.4 + this.rng() * 0.6) + (this.rng() - 0.5) * 28;
-      p.vy = -26 - this.rng() * 34;
-      p.life = 1.2 + this.rng() * 1.1;
-      p.baseSize = 14 + this.rng() * 15;
+      p.x = cx + (this.rng() - 0.5) * 82;
+      p.y = by + (this.rng() - 0.5) * 14;
+      p.vx = (p.x - cx) * (0.35 + this.rng() * 0.45) + (this.rng() - 0.5) * 22;
+      p.vy = -20 - this.rng() * 24;
+      p.life = 1.0 + this.rng() * 0.8;
+      p.baseSize = 8.5 + this.rng() * 6.5;
     }
     p.ch = sprayChars[Math.floor(this.rng() * sprayChars.length)];
     p.age = randomAge ? this.rng() * p.life : 0;
@@ -2517,7 +2517,6 @@ export class WorldEngine {
         const isOdd = iyOdd || (ix & 1) !== 0;
         if (isOdd && waterOddFade <= 0.04) continue;
         const h1 = hashInt(ix + 11, iy + 29);
-        if (h1 > 0.44) continue;
         const h2 = hashInt(ix - 41, iy + 71);
         const wx = ix * wStep + (h1 - 0.22) * 14;
         const wy = iy * wStep + (h2 - 0.5) * 10;
@@ -2530,7 +2529,7 @@ export class WorldEngine {
             this._waterState[wIdx] = 1;
             continue;
           }
-          ws = elev > -0.075 ? 3 : 2;
+          ws = elev > -0.085 ? 3 : 2;
           this._waterState[wIdx] = ws;
           if (Math.abs(wx - this.worldMap.getRiverCenterX(wy)) < 68) {
             const flow = this.worldMap.getRiverFlow(wx, wy);
@@ -2542,6 +2541,7 @@ export class WorldEngine {
         }
 
         const isShore = ws === 3;
+        if (h1 > (isShore ? 0.78 : 0.48)) continue;
         const fvy = this._waterFlowVy[wIdx];
         const hasFlow = fvy !== 0;
         const flowShift = hasFlow ? ((elapsed * 70 + h2 * 40) % 24) - 12 : 0;
@@ -2705,6 +2705,71 @@ export class WorldEngine {
       }
     }
 
+    // Mirrored 3D Adventurers & Remote Multiplayer Peers in Water!
+    for (const a of this.adventurers) {
+      if (a.x < minX - 80 || a.x > maxX + 80 || a.y < minY - 80 || a.y > maxY + 80) continue;
+      if (!this.worldMap.isWater(a.x, a.y + 22) && !this.worldMap.isWater(a.x, a.y + 4)) continue;
+      const g = scaledSprite(56, 56, 2.45);
+      emitPureAscii3DSprite({
+        renderer,
+        toScreenX,
+        toScreenY,
+        worldX: a.x,
+        worldY: a.y + 6,
+        worldTiltY: WORLD_TILT_Y,
+        cols: g.cols,
+        rows: g.rows,
+        worldSpan: 86,
+        cellScreenSize: g.cellScreenSize,
+        alphaMult: 0.56,
+        isReflection: true,
+        mirrorClipCheck: (rx, ry) => this.worldMap.isWater(rx, ry),
+        lanternPos: lp,
+        elapsed,
+        buildModel: (buf) => buildAdventurer3D(buf, a, elapsed)
+      });
+    }
+
+    if (this.remotePlayers && this.remotePlayers.length > 0) {
+      for (const rp of this.remotePlayers) {
+        if (rp.x < minX - 80 || rp.x > maxX + 80 || rp.y < minY - 80 || rp.y > maxY + 80) continue;
+        if (!this.worldMap.isWater(rp.x, rp.y + 22) && !this.worldMap.isWater(rp.x, rp.y + 4)) continue;
+        const g = scaledSprite(56, 56, 2.45);
+        emitPureAscii3DSprite({
+          renderer,
+          toScreenX,
+          toScreenY,
+          worldX: rp.x,
+          worldY: rp.y + 6,
+          worldTiltY: WORLD_TILT_Y,
+          cols: g.cols,
+          rows: g.rows,
+          worldSpan: 86,
+          cellScreenSize: g.cellScreenSize,
+          alphaMult: 0.58,
+          isReflection: true,
+          mirrorClipCheck: (rx, ry) => this.worldMap.isWater(rx, ry),
+          lanternPos: lp,
+          elapsed,
+          buildModel: (buf) =>
+            buildHeroKnight3D(buf, {
+              facing: rp.facing || 'right',
+              headingYaw: rp.yaw || 0,
+              isMounted: !!rp.mounted,
+              isMoving: !!rp.moving,
+              gaitPhase: elapsed * 8,
+              gallopBlend: 0.5,
+              slashProgress: rp.slash || 0,
+              swordFx: rp.swordFx || 'steel',
+              armorMaterial: { id: rp.armorId || 'steel', hex: rp.armorHex || '#74c0fc', trim: '#ffe066', halo: true },
+              elapsed,
+              showMountBody: !!rp.mounted,
+              showRiderBody: true
+            })
+        });
+      }
+    }
+
     if (this.worldMap.isWater(this.horseX, this.horseY + 24) || this.worldMap.isWater(this.horseX, this.horseY + 4)) {
       const g = scaledSprite(62, 62, 2.55);
       emitPureAscii3DSprite({
@@ -2857,17 +2922,17 @@ export class WorldEngine {
         const wz = this._grassZ[gIdx];
         const slope = this._grassSlope[gIdx];
 
-        // Steep Topographic Cliff Faces & Smooth Crag Strata (no blocky ▓ walls along shore!)
+        // Steep Topographic Cliff Faces (distinct rocky crag wall glyphs clearly separated from blue water & green grass!)
         if (gs === 6) {
-          if (h1 < 0.68) {
+          if (h1 < 0.74) {
             computeShadowAndWarmth(wx, wy);
-            const hillSh = clamp(1.0 + slope * 0.025, 0.7, 1.24);
-            const chC = h3 > 0.76 ? '^' : h3 > 0.52 ? '/' : h3 > 0.34 ? '=' : h2 > 0.45 ? '~' : ':';
-            const cSize = chC === '^' ? 1.06 : chC === ':' ? 0.76 : 0.92;
-            const rC = (0.34 + h2 * 0.22 + _outWarm * 0.34) * hillSh * _outShadow;
-            const gC = (0.38 + h2 * 0.22 + _outWarm * 0.20) * hillSh * _outShadow;
-            const bC = (0.48 + h3 * 0.22 - _outWarm * 0.06) * hillSh * _outShadow;
-            renderer.drawGlyph(toScreenX(wx), toScreenY(wy, wz), (5.4 + h3 * 1.4) * cSize * gScale * grassSizeBoost, chC, clamp(rC, 0, 1), clamp(gC, 0, 1), clamp(bC, 0, 1), 0.72 * lodFade, false);
+            const hillSh = clamp(1.0 + slope * 0.032, 0.65, 1.32);
+            const chC = h3 > 0.72 ? '#' : h3 > 0.48 ? '^' : h3 > 0.26 ? '/' : '\\';
+            const cSize = chC === '#' ? 1.08 : chC === '^' ? 1.04 : 0.92;
+            const rC = (0.48 + h2 * 0.20 + _outWarm * 0.34) * hillSh * _outShadow;
+            const gC = (0.44 + h2 * 0.18 + _outWarm * 0.22) * hillSh * _outShadow;
+            const bC = (0.40 + h3 * 0.18 - _outWarm * 0.06) * hillSh * _outShadow;
+            renderer.drawGlyph(toScreenX(wx), toScreenY(wy, wz), (5.6 + h3 * 1.4) * cSize * gScale * grassSizeBoost, chC, clamp(rC, 0, 1), clamp(gC, 0, 1), clamp(bC, 0, 1), 0.78 * lodFade, false);
           }
           continue;
         }
