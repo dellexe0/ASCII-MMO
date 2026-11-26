@@ -105,6 +105,7 @@ const mpNameInput = document.getElementById('mp-name-input');
 const mpCreateBtn = document.getElementById('mp-create-btn');
 const mpCodeInput = document.getElementById('mp-code-input');
 const mpJoinBtn = document.getElementById('mp-join-btn');
+const mpCopyBtn = document.getElementById('mp-copy-btn');
 
 const I18N = {
   ru: {
@@ -120,7 +121,9 @@ const I18N = {
     mpLabel: 'Мультиплеер (код комнаты):',
     mpCreate: 'Создать',
     mpJoin: 'Войти',
+    mpCopy: 'Ссылка',
     mpOffline: 'Оффлайн',
+    mpNeedCode: 'Введите код комнаты!',
     seed: 'Сид мира:',
     rand: 'Случайный',
     enter: '[ ВОЙТИ В МИР ]',
@@ -164,7 +167,9 @@ const I18N = {
     mpLabel: 'Multiplayer (Room Code):',
     mpCreate: 'Create Room',
     mpJoin: 'Join',
+    mpCopy: 'Copy Link',
     mpOffline: 'Offline',
+    mpNeedCode: 'Enter room code!',
     seed: 'Realm Seed:',
     rand: 'Random',
     enter: '[ ENTER REALM ]',
@@ -288,6 +293,7 @@ function applyLocalization() {
   if (lblMpEl) lblMpEl.textContent = t.mpLabel;
   if (mpCreateBtn) mpCreateBtn.textContent = t.mpCreate;
   if (mpJoinBtn) mpJoinBtn.textContent = t.mpJoin;
+  if (mpCopyBtn) mpCopyBtn.textContent = t.mpCopy;
   if (mpStatusEl && !multiplayer.roomCode) mpStatusEl.textContent = t.mpOffline;
   lblSeedEl.textContent = t.seed;
   menuRandSeedBtn.textContent = t.rand;
@@ -836,11 +842,14 @@ document.querySelectorAll('#touch-actions .touch-btn').forEach((btn) => {
 const multiplayer = new RoomMultiplayer({
   onStatus: (state, code, count = 1) => {
     if (!mpStatusEl) return;
+    const t = I18N[currentLang] || I18N.ru;
     if (state === 'connecting') mpStatusEl.textContent = `... ${code}`;
     else if (state === 'host') mpStatusEl.textContent = `HOST: ${code} (${count})`;
     else if (state === 'guest') mpStatusEl.textContent = `ROOM: ${code} (${count})`;
+    else if (state === 'empty_code') mpStatusEl.textContent = t.mpNeedCode;
     else if (state === 'error') mpStatusEl.textContent = `ERR: ${code}`;
-    else mpStatusEl.textContent = (I18N[currentLang] || I18N.ru).mpOffline;
+    else mpStatusEl.textContent = t.mpOffline;
+    if (mpCopyBtn) mpCopyBtn.style.display = code && (state === 'host' || state === 'connecting') ? 'inline-block' : 'none';
   },
   onRealmSync: (seed) => {
     menuSeedInput.value = String(seed);
@@ -849,25 +858,59 @@ const multiplayer = new RoomMultiplayer({
   onToast: (msg) => showToast(msg, 3.2)
 });
 
+function copyRoomInviteLink(code) {
+  if (!code) return;
+  const u = new URL(window.location.href);
+  u.searchParams.set('room', code);
+  const urlStr = u.toString();
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(urlStr).catch(() => {});
+  }
+  showToast(currentLang === 'ru' ? `Код ${code} создан! Ссылка скопирована` : `Room ${code} created! Link copied`, 3.5);
+}
+
 if (mpCreateBtn) {
+  let lastCreate = 0;
   const onCreate = (e) => {
     e.preventDefault();
+    if (performance.now() - lastCreate < 350) return;
+    lastCreate = performance.now();
     const seed = Number(menuSeedInput.value) || 842109;
     const code = multiplayer.createRoom(seed, mpNameInput ? mpNameInput.value : 'Knight');
     if (mpCodeInput) mpCodeInput.value = code;
+    copyRoomInviteLink(code);
   };
   mpCreateBtn.addEventListener('click', onCreate);
   mpCreateBtn.addEventListener('touchend', onCreate, { passive: false });
 }
 if (mpJoinBtn) {
+  let lastJoin = 0;
   const onJoin = (e) => {
     e.preventDefault();
+    if (performance.now() - lastJoin < 350) return;
+    lastJoin = performance.now();
     const code = mpCodeInput ? mpCodeInput.value : '';
-    multiplayer.joinRoom(code, mpNameInput ? mpNameInput.value : 'Knight');
+    const ok = multiplayer.joinRoom(code, mpNameInput ? mpNameInput.value : 'Knight');
+    if (!ok && mpCodeInput) mpCodeInput.focus();
   };
   mpJoinBtn.addEventListener('click', onJoin);
   mpJoinBtn.addEventListener('touchend', onJoin, { passive: false });
 }
+if (mpCopyBtn) {
+  mpCopyBtn.onclick = () => copyRoomInviteLink(multiplayer.roomCode || (mpCodeInput ? mpCodeInput.value : ''));
+}
+
+// Auto-join if opened via ?room=CODE invite link!
+try {
+  const urlRoom = new URLSearchParams(window.location.search).get('room');
+  if (urlRoom && mpCodeInput) {
+    const cleanRoom = urlRoom.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+    if (cleanRoom.length >= 3) {
+      mpCodeInput.value = cleanRoom;
+      setTimeout(() => multiplayer.joinRoom(cleanRoom, mpNameInput ? mpNameInput.value : 'Knight'), 150);
+    }
+  }
+} catch {}
 
 // 2-Finger Pinch-to-Zoom for Phones on Game Canvas
 let pinchDist0 = 0;

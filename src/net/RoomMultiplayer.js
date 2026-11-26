@@ -132,7 +132,8 @@ export class RoomMultiplayer {
   joinRoom(code, playerName = 'Knight') {
     const clean = (code || '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
     if (clean.length < 3) {
-      this.onStatus('error', 'CODE');
+      this.onStatus('empty_code', '');
+      this.onToast('ENTER ROOM CODE (E.G. K7M4P)');
       return false;
     }
 
