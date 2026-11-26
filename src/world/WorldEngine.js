@@ -48,7 +48,7 @@ function hashInt(ix, iy) {
   return ((n ^ (n >>> 16)) >>> 0) / 4294967295;
 }
 
-const GRASS_BLADES = ['/', '\\', '|', "'", ',', '.', '^', ';', 'v', 'τ', '¥'];
+const GRASS_BLADES = ['/', '\\', '|', "'", ',', '.', '^', ';', 'v', '`'];
 const WATER_RIPPLES = '~-_=.:≈';
 const MOON_CHARS = '@#%*=+~-:.';
 const CLOUD_CHARS = '.:,;+*~';
@@ -2797,7 +2797,7 @@ export class WorldEngine {
           if (roadF > 0.45 && !this.worldMap.isOnBridge(wx, wy)) {
             this._grassState[gIdx] = 2;
             gs = 2;
-          } else if (elev >= 0.44 || Math.abs(zS - zN) > 6.2) {
+          } else if (elev >= 0.44 || (elev > 0.14 && Math.abs(zS - zN) > 9.5)) {
             this._grassState[gIdx] = 6; // Steep cliff crag / ridge face!
             gs = 6;
           } else {
@@ -2817,17 +2817,17 @@ export class WorldEngine {
         const wz = this._grassZ[gIdx];
         const slope = this._grassSlope[gIdx];
 
-        // Steep Topographic Cliff Faces & Smooth Crag Strata (multi-size varied rock glyphs)
+        // Steep Topographic Cliff Faces & Smooth Crag Strata (no blocky ▓ walls along shore!)
         if (gs === 6) {
-          if (h1 < 0.74) {
+          if (h1 < 0.68) {
             computeShadowAndWarmth(wx, wy);
-            const hillSh = clamp(1.0 + slope * 0.025, 0.7, 1.28);
-            const chC = h3 > 0.74 ? '^' : h3 > 0.48 ? '▓' : h3 > 0.28 ? '=' : h2 > 0.45 ? '~' : ':';
-            const cSize = chC === '▓' || chC === '^' ? 1.14 : chC === ':' ? 0.78 : 0.98;
-            const rC = (0.40 + h2 * 0.24 + _outWarm * 0.36) * hillSh * _outShadow;
-            const gC = (0.44 + h2 * 0.24 + _outWarm * 0.22) * hillSh * _outShadow;
-            const bC = (0.54 + h3 * 0.24 - _outWarm * 0.06) * hillSh * _outShadow;
-            renderer.drawGlyph(toScreenX(wx), toScreenY(wy, wz), (5.8 + h3 * 1.6) * cSize * gScale * grassSizeBoost, chC, clamp(rC, 0, 1), clamp(gC, 0, 1), clamp(bC, 0, 1), 0.80 * lodFade, false);
+            const hillSh = clamp(1.0 + slope * 0.025, 0.7, 1.24);
+            const chC = h3 > 0.76 ? '^' : h3 > 0.52 ? '/' : h3 > 0.34 ? '=' : h2 > 0.45 ? '~' : ':';
+            const cSize = chC === '^' ? 1.06 : chC === ':' ? 0.76 : 0.92;
+            const rC = (0.34 + h2 * 0.22 + _outWarm * 0.34) * hillSh * _outShadow;
+            const gC = (0.38 + h2 * 0.22 + _outWarm * 0.20) * hillSh * _outShadow;
+            const bC = (0.48 + h3 * 0.22 - _outWarm * 0.06) * hillSh * _outShadow;
+            renderer.drawGlyph(toScreenX(wx), toScreenY(wy, wz), (5.4 + h3 * 1.4) * cSize * gScale * grassSizeBoost, chC, clamp(rC, 0, 1), clamp(gC, 0, 1), clamp(bC, 0, 1), 0.72 * lodFade, false);
           }
           continue;
         }
@@ -2966,8 +2966,8 @@ export class WorldEngine {
         cg *= mult;
         cb *= mult;
         const alpha = clamp((isTallBlade ? 0.58 : 0.4) + h2 * 0.38 * shadow + warm * 0.25 + wakeSheen * 0.2, 0.26, 0.96) * lodFade;
-        const sizeHier = ch === '.' || ch === ',' || ch === "'" ? 0.74 : ch === '✦' || ch === '¥' || ch === 'τ' ? 1.24 : 1.0;
-        const sizeWorld = ((revealFlower ? 4.2 : isTallBlade ? 5.1 : 3.5) + h3 * 2.2) * sizeHier * (isOdd ? 1.0 : grassSizeBoost);
+        const sizeHier = ch === '.' || ch === ',' || ch === "'" || ch === '`' ? 0.74 : ch === '✦' || ch === '*' ? 0.96 : 1.04;
+        const sizeWorld = ((revealFlower ? 3.8 : isTallBlade ? 4.8 : 3.4) + h3 * 1.8) * sizeHier * (isOdd ? 1.0 : grassSizeBoost);
         const sxGrass = toScreenX(wx + swayX);
         const syGrass = toScreenY(wy + swayY, wz - (crushed ? 1.8 : 0));
 

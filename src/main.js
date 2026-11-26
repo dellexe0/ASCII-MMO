@@ -80,10 +80,116 @@ const cam = {
   vh: window.innerHeight
 };
 
+const startMenuOverlay = document.getElementById('start-menu-overlay');
+const menuTitleEl = document.getElementById('menu-title-el');
+const menuSubEl = document.getElementById('menu-sub-el');
+const lblLangEl = document.getElementById('lbl-lang');
+const lblClassEl = document.getElementById('lbl-class');
+const lblDetailEl = document.getElementById('lbl-detail');
+const lblWeatherEl = document.getElementById('lbl-weather');
+const lblAutozoomEl = document.getElementById('lbl-autozoom');
+const lblSeedEl = document.getElementById('lbl-seed');
+const menuSeedInput = document.getElementById('menu-seed-input');
+const menuRandSeedBtn = document.getElementById('menu-rand-seed-btn');
+const menuStartBtn = document.getElementById('menu-start-btn');
+const menuHintEl = document.getElementById('menu-hint-el');
+const openMenuBtn = document.getElementById('open-menu-btn');
+
+const I18N = {
+  ru: {
+    menuTitle: '╔══ ASHEN SCRIPT: ЧИСТЫЙ ASCII ARPG ══╗',
+    menuSub: 'Архипелаг Расколотого Полумесяца • Живой 3D ASCII',
+    lang: 'Язык / Language:',
+    arch: 'Класс героя:',
+    detail: 'Детализация ASCII:',
+    weather: 'Погода на старте:',
+    autozoom: 'Авто-зум:',
+    seed: 'Сид мира:',
+    rand: 'Случайный',
+    enter: '[ ВОЙТИ В МИР ]',
+    resume: '[ ПРОДОЛЖИТЬ ИГРУ ]',
+    hint: 'WASD: Движение • Shift: Галоп • ЛКМ/1-4: Удары • Space: Рывок • F: Конь • E: Действие • Колесо: Зум',
+    classes: { knight: 'Рыцарь', berserker: 'Берсерк', bulwark: 'Оплот', assassin: 'Ассасин' },
+    details: { '3.5': 'Высокая', '4.0': 'Средняя', '4.7': 'Крупная' },
+    weathers: { clear: 'Ясная ночь', storm: 'Гроза' },
+    on: 'ВКЛ',
+    off: 'ВЫКЛ',
+    btnCraft: '[K] Крафт',
+    btnGear: '[C] Герой',
+    btnTree: '[P] Древо',
+    btnStorm: '[V] Гроза',
+    btnMode: '[Tab] Бой',
+    btnRealm: '[M] Сид',
+    btnHud: '[H] HUD',
+    btnMenu: 'Меню',
+    sQ: 'Q Фляга',
+    s1: '1 Удар',
+    s2: '2 Парир',
+    s3: '3 Рана',
+    s4: '4 Ярость',
+    sDash: '5 Рывок',
+    sMount: '6 Конь',
+    sTarget: '7 Цель',
+    sCraft: '8 Крафт',
+    sRain: '9 Гроза',
+    sTree: '0 Древо'
+  },
+  en: {
+    menuTitle: '╔══ ASHEN SCRIPT: PURE ASCII ARPG ══╗',
+    menuSub: 'Shattered Crescent Archipelago • Real-Time 3D ASCII',
+    lang: 'Language / Язык:',
+    arch: 'Archetype:',
+    detail: 'ASCII Detail:',
+    weather: 'Weather:',
+    autozoom: 'Auto Zoom:',
+    seed: 'Realm Seed:',
+    rand: 'Random',
+    enter: '[ ENTER REALM ]',
+    resume: '[ RESUME REALM ]',
+    hint: 'WASD: Move • Shift: Sprint • LMB/1-4: Skills • Space: Dash • F: Mount • E: Interact • Wheel: Zoom',
+    classes: { knight: 'Knight', berserker: 'Berserker', bulwark: 'Bulwark', assassin: 'Assassin' },
+    details: { '3.5': 'High', '4.0': 'Balanced', '4.7': 'Bold' },
+    weathers: { clear: 'Clear Night', storm: 'Storm' },
+    on: 'ON',
+    off: 'OFF',
+    btnCraft: '[K] Craft',
+    btnGear: '[C] Gear',
+    btnTree: '[P] Tree',
+    btnStorm: '[V] Storm',
+    btnMode: '[Tab] Mode',
+    btnRealm: '[M] Realm',
+    btnHud: '[H] HUD',
+    btnMenu: 'Menu',
+    sQ: 'Q Flask',
+    s1: '1 Cleave',
+    s2: '2 Parry',
+    s3: '3 Rend',
+    s4: '4 Blood',
+    sDash: '5 Dash',
+    sMount: '6 Mount',
+    sTarget: '7 Target',
+    sCraft: '8 Craft',
+    sRain: '9 Storm',
+    sTree: '0 Tree'
+  }
+};
+
+let savedPrefs = {};
+try {
+  savedPrefs = JSON.parse(localStorage.getItem('ashen_ascii_prefs') || '{}') || {};
+} catch {}
+
+let currentLang = savedPrefs.lang === 'en' ? 'en' : 'ru';
+let selectedArch = savedPrefs.arch || 'knight';
+let selectedWeather = savedPrefs.weather === 'storm' ? 'storm' : 'clear';
+let menuOpen = true;
+let hasEnteredOnce = false;
+
 let worldMap = null;
 let engine = null;
-let baseSize = 4;
-let autoZoom = autoZoomCheckbox.checked;
+let baseSize = Number(savedPrefs.detail) || 4.0;
+let autoZoom = savedPrefs.autoZoom !== undefined ? !!savedPrefs.autoZoom : autoZoomCheckbox.checked;
+autoZoomCheckbox.checked = autoZoom;
 let hudVisible = true;
 let dialogueOpen = false;
 let dialoguePages = [];
@@ -116,19 +222,112 @@ function resizeAll() {
   ascii.resize(cam.vw, cam.vh);
 }
 
-function generateRealm(seed = Math.floor(Math.random() * 900000) + 100000) {
+function savePrefs() {
+  try {
+    localStorage.setItem(
+      'ashen_ascii_prefs',
+      JSON.stringify({
+        lang: currentLang,
+        arch: selectedArch,
+        detail: baseSize,
+        weather: selectedWeather,
+        autoZoom
+      })
+    );
+  } catch {}
+}
+
+function applyLocalization() {
+  const t = I18N[currentLang] || I18N.ru;
+  menuTitleEl.textContent = t.menuTitle;
+  menuSubEl.textContent = t.menuSub;
+  lblLangEl.textContent = t.lang;
+  lblClassEl.textContent = t.arch;
+  lblDetailEl.textContent = t.detail;
+  lblWeatherEl.textContent = t.weather;
+  lblAutozoomEl.textContent = t.autozoom;
+  lblSeedEl.textContent = t.seed;
+  menuRandSeedBtn.textContent = t.rand;
+  menuStartBtn.textContent = hasEnteredOnce ? t.resume : t.enter;
+  menuHintEl.textContent = t.hint;
+
+  document.querySelectorAll('#menu-lang-seg button').forEach((b) => b.classList.toggle('active', b.dataset.lang === currentLang));
+  document.querySelectorAll('#menu-class-seg button').forEach((b) => {
+    b.textContent = t.classes[b.dataset.arch] || b.dataset.arch;
+    b.classList.toggle('active', b.dataset.arch === selectedArch);
+  });
+  document.querySelectorAll('#menu-detail-seg button').forEach((b) => {
+    b.textContent = t.details[b.dataset.detail] || b.dataset.detail;
+    b.classList.toggle('active', Math.abs(Number(b.dataset.detail) - baseSize) < 0.05);
+  });
+  document.querySelectorAll('#menu-weather-seg button').forEach((b) => {
+    b.textContent = t.weathers[b.dataset.weather] || b.dataset.weather;
+    b.classList.toggle('active', b.dataset.weather === selectedWeather);
+  });
+  document.querySelectorAll('#menu-zoom-seg button').forEach((b) => {
+    const isOn = b.dataset.zoom === '1';
+    b.textContent = isOn ? t.on : t.off;
+    b.classList.toggle('active', isOn === autoZoom);
+  });
+
+  autoZoomLabel.textContent = autoZoom ? `[${t.on}]` : `[${t.off}]`;
+  document.getElementById('craft-btn').textContent = t.btnCraft;
+  document.getElementById('gear-btn').textContent = t.btnGear;
+  document.getElementById('tree-btn').textContent = t.btnTree;
+  document.getElementById('rain-btn').textContent = t.btnStorm;
+  document.getElementById('mode-btn').textContent = t.btnMode;
+  document.getElementById('new-map-btn').textContent = t.btnRealm;
+  document.getElementById('hide-hud-btn').textContent = t.btnHud;
+  openMenuBtn.textContent = t.btnMenu;
+
+  const skillMap = { '1': t.s1, '2': t.s2, '3': t.s3, '4': t.s4, dash: t.sDash, mount: t.sMount, target: t.sTarget, craft: t.sCraft, rain: t.sRain, tree: t.sTree };
+  document.querySelectorAll('.skill-slot').forEach((el) => {
+    const sk = el.dataset.skill;
+    if (skillMap[sk]) el.textContent = skillMap[sk];
+  });
+}
+
+function openStartMenu() {
+  menuOpen = true;
+  keys.clear();
+  startMenuOverlay.style.display = 'flex';
+  hudOverlay.style.display = 'none';
+  applyLocalization();
+}
+
+function enterRealmFromMenu() {
+  const reqSeed = Number(menuSeedInput.value) || 842109;
+  const needRebuild = !hasEnteredOnce || !worldMap || worldMap.seed !== reqSeed || (engine && engine.build.archetypeId !== selectedArch);
+  menuOpen = false;
+  startMenuOverlay.style.display = 'none';
+  hudOverlay.style.display = hudVisible ? 'block' : 'none';
+
+  if (needRebuild) {
+    generateRealm(reqSeed, selectedArch);
+  }
+  if (engine) {
+    engine.rainEnabled = selectedWeather === 'storm';
+  }
+  hasEnteredOnce = true;
+  applyLocalization();
+  savePrefs();
+}
+
+function generateRealm(seed = Math.floor(Math.random() * 900000) + 100000, arch = selectedArch) {
   dialogueOpen = false;
   dialogueBoxEl.style.display = 'none';
   worldMap = new WorldSketchMap(seed);
   worldMap.renderMinimap(minimapBgCanvas.getContext('2d'), minimapBgCanvas.width, minimapBgCanvas.height);
-  engine = new WorldEngine(worldMap, engine ? engine.build.archetypeId : 'knight');
+  engine = new WorldEngine(worldMap, arch || (engine ? engine.build.archetypeId : 'knight'));
+  engine.rainEnabled = selectedWeather === 'storm';
+  if (menuSeedInput) menuSeedInput.value = String(seed);
   cam.x = engine.x;
   cam.y = engine.y - 34 - ((engine.z || 0) * LIFT_Z) / WORLD_TILT_Y;
   cam.zoom = 1.38;
   cam.targetZoom = 1.38;
 
-  pushLog(`Entered Ash-Script Realm #${seed}`);
-  showToast(`REALM #${seed} — PURE ASCII MMORPG + ARPG`);
+  pushLog(currentLang === 'ru' ? `Вход в мир #${seed}` : `Entered Ash-Script Realm #${seed}`);
+  showToast(currentLang === 'ru' ? `МИР #${seed} — ЧИСТЫЙ ASCII ARPG` : `REALM #${seed} — PURE ASCII MMORPG + ARPG`);
   refreshPanels();
 }
 
@@ -464,6 +663,49 @@ document.getElementById('hide-hud-btn').onclick = () => {
   hudVisible = !hudVisible;
   hudOverlay.style.display = hudVisible ? 'block' : 'none';
 };
+openMenuBtn.onclick = () => openStartMenu();
+
+document.querySelectorAll('#menu-lang-seg button').forEach((b) => {
+  b.onclick = () => {
+    currentLang = b.dataset.lang;
+    applyLocalization();
+    savePrefs();
+  };
+});
+document.querySelectorAll('#menu-class-seg button').forEach((b) => {
+  b.onclick = () => {
+    selectedArch = b.dataset.arch;
+    applyLocalization();
+    savePrefs();
+  };
+});
+document.querySelectorAll('#menu-detail-seg button').forEach((b) => {
+  b.onclick = () => {
+    baseSize = Number(b.dataset.detail) || 4.0;
+    applyLocalization();
+    savePrefs();
+  };
+});
+document.querySelectorAll('#menu-weather-seg button').forEach((b) => {
+  b.onclick = () => {
+    selectedWeather = b.dataset.weather;
+    if (engine) engine.rainEnabled = selectedWeather === 'storm';
+    applyLocalization();
+    savePrefs();
+  };
+});
+document.querySelectorAll('#menu-zoom-seg button').forEach((b) => {
+  b.onclick = () => {
+    autoZoom = b.dataset.zoom === '1';
+    autoZoomCheckbox.checked = autoZoom;
+    applyLocalization();
+    savePrefs();
+  };
+});
+menuRandSeedBtn.onclick = () => {
+  menuSeedInput.value = String(Math.floor(Math.random() * 900000) + 100000);
+};
+menuStartBtn.onclick = () => enterRealmFromMenu();
 
 document.querySelectorAll('.skill-slot').forEach((el) => {
   el.addEventListener('click', (e) => {
@@ -486,6 +728,11 @@ document.querySelectorAll('.skill-slot').forEach((el) => {
 });
 
 window.addEventListener('keydown', (e) => {
+  if (menuOpen) {
+    if (e.code === 'Escape' && hasEnteredOnce) enterRealmFromMenu();
+    else if (e.code === 'Enter') enterRealmFromMenu();
+    return;
+  }
   if (e.code === 'Tab' || e.code === 'Space') e.preventDefault();
   if (e.repeat) {
     keys.add(e.code);
@@ -543,7 +790,7 @@ window.addEventListener('keyup', (e) => keys.delete(e.code));
 window.addEventListener('blur', () => keys.clear());
 
 canvas.addEventListener('mousedown', (e) => {
-  if (dialogueOpen) return;
+  if (menuOpen || dialogueOpen) return;
   const rect = canvas.getBoundingClientRect();
   const sx = e.clientX - rect.left;
   const sy = e.clientY - rect.top;
@@ -579,7 +826,8 @@ window.addEventListener(
 window.addEventListener('resize', resizeAll);
 
 resizeAll();
-generateRealm(842109);
+generateRealm(Number(menuSeedInput.value) || 842109, selectedArch);
+openStartMenu();
 
 let lastTime = performance.now();
 let elapsed = 0;
@@ -590,9 +838,9 @@ function loop(now) {
   lastTime = now;
   elapsed += dt;
 
-  const forward = (keys.has('KeyW') || keys.has('ArrowUp') ? 1 : 0) - (keys.has('KeyS') || keys.has('ArrowDown') ? 1 : 0);
-  const right = (keys.has('KeyD') || keys.has('ArrowRight') ? 1 : 0) - (keys.has('KeyA') || keys.has('ArrowLeft') ? 1 : 0);
-  const sprint = keys.has('ShiftLeft') || keys.has('ShiftRight');
+  const forward = menuOpen ? 0 : (keys.has('KeyW') || keys.has('ArrowUp') ? 1 : 0) - (keys.has('KeyS') || keys.has('ArrowDown') ? 1 : 0);
+  const right = menuOpen ? 0 : (keys.has('KeyD') || keys.has('ArrowRight') ? 1 : 0) - (keys.has('KeyA') || keys.has('ArrowLeft') ? 1 : 0);
+  const sprint = !menuOpen && (keys.has('ShiftLeft') || keys.has('ShiftRight'));
 
   const res = engine.update(dt, elapsed, { forward, right, sprint });
   if (res.xpGained > 0 && engine.grantXp(res.xpGained)) {
@@ -651,7 +899,8 @@ function loop(now) {
     bottomMetaEl.textContent = `LV ${b.level} - ${b.xp} / ${b.xpToNext} XP | HP: ${Math.round(engine.hp)}/${c.maxHp} | FLASKS: ${engine.flasks}/${c.maxFlasks || 3} | METAL: ${c.armorMaterial.name}`;
     const flaskEl = document.getElementById('flask-slot-el');
     if (flaskEl) {
-      flaskEl.textContent = `Q Flask ${engine.flasks}/${c.maxFlasks || 3}`;
+      const flkPrefix = currentLang === 'ru' ? 'Q Фляга' : 'Q Flask';
+      flaskEl.textContent = `${flkPrefix} ${engine.flasks}/${c.maxFlasks || 3}`;
       flaskEl.classList.toggle('cd', engine.flaskCooldown > 0 || engine.flasks <= 0);
     }
 

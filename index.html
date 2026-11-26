@@ -292,10 +292,154 @@
       border: 1px solid #2c353d;
       cursor: grab;
     }
+    .start-menu-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 50;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(1, 4, 6, 0.72);
+      backdrop-filter: blur(2px);
+    }
+    .start-menu-card {
+      width: min(520px, 92vw);
+      background: rgba(3, 8, 11, 0.95);
+      border: 1px solid #5aa887;
+      box-shadow: 0 0 36px rgba(24, 96, 68, 0.35);
+      padding: 18px 20px;
+      color: #d7f5e8;
+      display: flex;
+      flex-direction: column;
+      gap: 11px;
+    }
+    .menu-title {
+      text-align: center;
+      font-size: 18px;
+      font-weight: bold;
+      color: #ffd43b;
+      letter-spacing: 1px;
+    }
+    .menu-sub {
+      text-align: center;
+      font-size: 11px;
+      color: #8ce99a;
+      margin-top: -6px;
+    }
+    .menu-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      font-size: 12px;
+      border-bottom: 1px solid #152b24;
+      padding-bottom: 7px;
+    }
+    .menu-seg {
+      display: flex;
+      gap: 4px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+    .menu-input {
+      background: #050b0e;
+      color: #ffd43b;
+      border: 1px solid #3c755f;
+      font-family: inherit;
+      font-size: 12px;
+      padding: 3px 8px;
+      width: 110px;
+      text-align: center;
+    }
+    .menu-start-btn {
+      margin-top: 4px;
+      padding: 10px 14px;
+      font-size: 14px;
+      font-weight: bold;
+      letter-spacing: 1px;
+      background: #123328;
+      border: 1px solid #69db7c;
+      color: #ffe066;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .menu-start-btn:hover {
+      background: #1b4d3c;
+      border-color: #ffd43b;
+      color: #ffffff;
+    }
+    .menu-controls-hint {
+      font-size: 10px;
+      color: #74c0fc;
+      text-align: center;
+      line-height: 1.45;
+    }
   </style>
 </head>
 <body>
   <canvas id="game-canvas" oncontextmenu="return false;"></canvas>
+
+  <!-- Pre-Game Start & Settings Menu -->
+  <div id="start-menu-overlay" class="start-menu-overlay">
+    <div class="start-menu-card">
+      <div class="menu-title" id="menu-title-el">╔══ ASHEN SCRIPT: PURE ASCII ARPG ══╗</div>
+      <div class="menu-sub" id="menu-sub-el">Shattered Crescent Archipelago • Real-Time 3D ASCII</div>
+
+      <div class="menu-row">
+        <span id="lbl-lang">Language / Язык:</span>
+        <div class="menu-seg" id="menu-lang-seg">
+          <button class="ascii-btn" data-lang="ru" type="button">Русский</button>
+          <button class="ascii-btn" data-lang="en" type="button">English</button>
+        </div>
+      </div>
+
+      <div class="menu-row">
+        <span id="lbl-class">Archetype:</span>
+        <div class="menu-seg" id="menu-class-seg">
+          <button class="ascii-btn" data-arch="knight" type="button">Knight</button>
+          <button class="ascii-btn" data-arch="berserker" type="button">Berserker</button>
+          <button class="ascii-btn" data-arch="bulwark" type="button">Bulwark</button>
+          <button class="ascii-btn" data-arch="assassin" type="button">Assassin</button>
+        </div>
+      </div>
+
+      <div class="menu-row">
+        <span id="lbl-detail">ASCII Detail:</span>
+        <div class="menu-seg" id="menu-detail-seg">
+          <button class="ascii-btn" data-detail="3.5" type="button">High</button>
+          <button class="ascii-btn" data-detail="4.0" type="button">Balanced</button>
+          <button class="ascii-btn" data-detail="4.7" type="button">Bold</button>
+        </div>
+      </div>
+
+      <div class="menu-row">
+        <span id="lbl-weather">Weather:</span>
+        <div class="menu-seg" id="menu-weather-seg">
+          <button class="ascii-btn" data-weather="clear" type="button">Clear Night</button>
+          <button class="ascii-btn" data-weather="storm" type="button">Storm</button>
+        </div>
+      </div>
+
+      <div class="menu-row">
+        <span id="lbl-autozoom">Auto Zoom:</span>
+        <div class="menu-seg" id="menu-zoom-seg">
+          <button class="ascii-btn" data-zoom="1" type="button">ON</button>
+          <button class="ascii-btn" data-zoom="0" type="button">OFF</button>
+        </div>
+      </div>
+
+      <div class="menu-row">
+        <span id="lbl-seed">Realm Seed:</span>
+        <div class="menu-seg">
+          <input id="menu-seed-input" class="menu-input" type="number" value="842109" />
+          <button id="menu-rand-seed-btn" class="ascii-btn" type="button">Random</button>
+        </div>
+      </div>
+
+      <button id="menu-start-btn" class="menu-start-btn" type="button">[ ENTER REALM ]</button>
+      <div class="menu-controls-hint" id="menu-hint-el">WASD: Move • Shift: Sprint • LMB/1-4: Skills • Space: Dash • F: Mount • E: Interact • Wheel: Zoom</div>
+    </div>
+  </div>
 
   <div class="hud-overlay" id="hud-overlay">
     <div class="boss-bar-wrap" id="boss-bar-wrap">
@@ -336,6 +480,7 @@
       <div class="btn-row">
         <button id="new-map-btn" class="ascii-btn" type="button">[M] Realm</button>
         <button id="hide-hud-btn" class="ascii-btn" type="button">[H] HUD</button>
+        <button id="open-menu-btn" class="ascii-btn" type="button">Menu</button>
       </div>
     </div>
 

@@ -809,14 +809,16 @@ export class Ascii3DBuffer {
           ch = clothRamp[ci];
         }
 
-        const effSpec = matType === 5 || matType === 8 ? 0 : spec;
+        const effSpec = matType === 5 || matType === 8 ? 0 : matType === 4 ? spec * 0.35 : spec;
         const shadeBoost = isRefl
           ? 0.58
           : matType === 5 || matType === 8
             ? 0.68 + lit * 0.78
-            : matType === 2
-              ? 0.44 + lit * 1.04
-              : 0.48 + lit * 0.92;
+            : matType === 4
+              ? 0.44 + lit * 0.70
+              : matType === 2
+                ? 0.44 + lit * 1.04
+                : 0.48 + lit * 0.92;
         const silRim = isSil && !isRefl && matType !== 5 && matType !== 8 ? (rimColor ? 0.4 : 0.28) : 0;
         let rOut = r * shadeBoost + warmLight * (matType === 5 ? 0.24 : 0.48) + (rimColor ? rimColor[0] * silRim : silRim * 0.85) + effSpec * 0.42;
         let gOut = g * shadeBoost + warmLight * (matType === 5 ? 0.14 : 0.24) + (rimColor ? rimColor[1] * silRim : silRim * 0.92) + effSpec * 0.44;

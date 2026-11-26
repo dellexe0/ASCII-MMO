@@ -154,11 +154,11 @@ export function buildHeroKnight3D(
     ? Math.sin(gaitPhase * 2) * (isMounted ? 1.8 + gallopBlend * 1.4 : 1.3)
     : Math.sin(elapsed * 2.4) * 0.45;
 
-  const horseBody = mountCoat?.body || matRgb(0.88, 0.92, 0.98, 4);
-  const horseChest = mountCoat?.chest || matRgb(0.97, 0.98, 1.0, 4);
-  const horseShadow = mountCoat?.shadow || matRgb(0.58, 0.65, 0.75, 4);
+  const horseBody = mountCoat?.body || matRgb(0.72, 0.78, 0.86, 4);
+  const horseChest = mountCoat?.chest || matRgb(0.80, 0.85, 0.92, 4);
+  const horseShadow = mountCoat?.shadow || matRgb(0.46, 0.54, 0.64, 4);
   const hoofMat = matRgb(0.28, 0.3, 0.36, 2);
-  const maneMat = mountCoat?.mane || matRgb(0.98, 0.99, 1.0, 4, 0.08);
+  const maneMat = mountCoat?.mane || matRgb(0.84, 0.88, 0.95, 4, 0.0);
   const leatherMat = matRgb(0.46, 0.28, 0.16, 1);
   const capeDark = cloakTone?.dark || matRgb(0.52, 0.08, 0.14, 1);
   const capeBright = cloakTone?.bright || matRgb(0.95, 0.2, 0.28, 1, 0.12);
