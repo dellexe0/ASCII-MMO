@@ -88,12 +88,16 @@ const lblClassEl = document.getElementById('lbl-class');
 const lblDetailEl = document.getElementById('lbl-detail');
 const lblWeatherEl = document.getElementById('lbl-weather');
 const lblAutozoomEl = document.getElementById('lbl-autozoom');
+const lblTouchEl = document.getElementById('lbl-touch');
 const lblSeedEl = document.getElementById('lbl-seed');
 const menuSeedInput = document.getElementById('menu-seed-input');
 const menuRandSeedBtn = document.getElementById('menu-rand-seed-btn');
 const menuStartBtn = document.getElementById('menu-start-btn');
 const menuHintEl = document.getElementById('menu-hint-el');
 const openMenuBtn = document.getElementById('open-menu-btn');
+const mobileControlsEl = document.getElementById('mobile-controls');
+const touchJoyZone = document.getElementById('touch-joy-zone');
+const touchJoyKnob = document.getElementById('touch-joy-knob');
 
 const I18N = {
   ru: {
@@ -104,6 +108,8 @@ const I18N = {
     detail: 'Детализация ASCII:',
     weather: 'Погода на старте:',
     autozoom: 'Авто-зум:',
+    touch: 'Сенсор (телефон):',
+    touchModes: { auto: 'Авто', on: 'ВКЛ', off: 'ВЫКЛ' },
     seed: 'Сид мира:',
     rand: 'Случайный',
     enter: '[ ВОЙТИ В МИР ]',
@@ -142,6 +148,8 @@ const I18N = {
     detail: 'ASCII Detail:',
     weather: 'Weather:',
     autozoom: 'Auto Zoom:',
+    touch: 'Touch Controls:',
+    touchModes: { auto: 'Auto', on: 'ON', off: 'OFF' },
     seed: 'Realm Seed:',
     rand: 'Random',
     enter: '[ ENTER REALM ]',
@@ -182,6 +190,11 @@ try {
 let currentLang = savedPrefs.lang === 'en' ? 'en' : 'ru';
 let selectedArch = savedPrefs.arch || 'knight';
 let selectedWeather = savedPrefs.weather === 'storm' ? 'storm' : 'clear';
+let touchMode = savedPrefs.touchMode || 'auto';
+let touchMoveX = 0;
+let touchMoveY = 0;
+let touchSprint = false;
+let touchJoyId = null;
 let menuOpen = true;
 let hasEnteredOnce = false;
 
@@ -231,10 +244,20 @@ function savePrefs() {
         arch: selectedArch,
         detail: baseSize,
         weather: selectedWeather,
-        autoZoom
+        autoZoom,
+        touchMode
       })
     );
   } catch {}
+}
+
+function updateMobileControlsVisibility() {
+  const isTouchDevice =
+    'ontouchstart' in window ||
+    navigator.maxTouchPoints > 0 ||
+    (window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
+  const show = !menuOpen && (touchMode === 'on' || (touchMode === 'auto' && isTouchDevice));
+  if (mobileControlsEl) mobileControlsEl.style.display = show ? 'block' : 'none';
 }
 
 function applyLocalization() {
@@ -246,6 +269,7 @@ function applyLocalization() {
   lblDetailEl.textContent = t.detail;
   lblWeatherEl.textContent = t.weather;
   lblAutozoomEl.textContent = t.autozoom;
+  if (lblTouchEl) lblTouchEl.textContent = t.touch;
   lblSeedEl.textContent = t.seed;
   menuRandSeedBtn.textContent = t.rand;
   menuStartBtn.textContent = hasEnteredOnce ? t.resume : t.enter;
@@ -269,6 +293,10 @@ function applyLocalization() {
     b.textContent = isOn ? t.on : t.off;
     b.classList.toggle('active', isOn === autoZoom);
   });
+  document.querySelectorAll('#menu-touch-seg button').forEach((b) => {
+    b.textContent = t.touchModes[b.dataset.touch] || b.dataset.touch;
+    b.classList.toggle('active', b.dataset.touch === touchMode);
+  });
 
   autoZoomLabel.textContent = autoZoom ? `[${t.on}]` : `[${t.off}]`;
   document.getElementById('craft-btn').textContent = t.btnCraft;
@@ -290,8 +318,12 @@ function applyLocalization() {
 function openStartMenu() {
   menuOpen = true;
   keys.clear();
+  touchMoveX = 0;
+  touchMoveY = 0;
+  touchSprint = false;
   startMenuOverlay.style.display = 'flex';
   hudOverlay.style.display = 'none';
+  updateMobileControlsVisibility();
   applyLocalization();
 }
 
@@ -301,6 +333,7 @@ function enterRealmFromMenu() {
   menuOpen = false;
   startMenuOverlay.style.display = 'none';
   hudOverlay.style.display = hudVisible ? 'block' : 'none';
+  updateMobileControlsVisibility();
 
   if (needRebuild) {
     generateRealm(reqSeed, selectedArch);
@@ -702,6 +735,82 @@ document.querySelectorAll('#menu-zoom-seg button').forEach((b) => {
     savePrefs();
   };
 });
+document.querySelectorAll('#menu-touch-seg button').forEach((b) => {
+  b.onclick = () => {
+    touchMode = b.dataset.touch || 'auto';
+    applyLocalization();
+    updateMobileControlsVisibility();
+    savePrefs();
+  };
+});
+
+// Mobile Virtual Joystick + Touch Action Buttons
+if (touchJoyZone && touchJoyKnob) {
+  const maxR = 42;
+  const updateJoyFromPoint = (clientX, clientY) => {
+    const rect = touchJoyZone.getBoundingClientRect();
+    const cx = rect.left + rect.width * 0.5;
+    const cy = rect.top + rect.height * 0.5;
+    let dx = clientX - cx;
+    let dy = clientY - cy;
+    const dist = Math.hypot(dx, dy);
+    if (dist > maxR) {
+      dx = (dx / dist) * maxR;
+      dy = (dy / dist) * maxR;
+    }
+    touchJoyKnob.style.transform = `translate(${dx}px, ${dy}px)`;
+    const norm = Math.min(1, dist / maxR);
+    touchMoveX = dist > 6 ? dx / maxR : 0;
+    touchMoveY = dist > 6 ? dy / maxR : 0;
+    touchSprint = norm > 0.78;
+  };
+  const resetJoy = () => {
+    touchJoyId = null;
+    touchMoveX = 0;
+    touchMoveY = 0;
+    touchSprint = false;
+    touchJoyKnob.style.transform = 'translate(0px, 0px)';
+  };
+
+  touchJoyZone.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    if (touchJoyId !== null) return;
+    const t = e.changedTouches[0];
+    touchJoyId = t.identifier;
+    updateJoyFromPoint(t.clientX, t.clientY);
+  }, { passive: false });
+  touchJoyZone.addEventListener('touchmove', (e) => {
+    e.preventDefault();
+    for (const t of e.changedTouches) {
+      if (t.identifier === touchJoyId) {
+        updateJoyFromPoint(t.clientX, t.clientY);
+        break;
+      }
+    }
+  }, { passive: false });
+  touchJoyZone.addEventListener('touchend', (e) => {
+    for (const t of e.changedTouches) if (t.identifier === touchJoyId) resetJoy();
+  });
+  touchJoyZone.addEventListener('touchcancel', resetJoy);
+}
+
+document.querySelectorAll('#touch-actions .touch-btn').forEach((btn) => {
+  const triggerTouchAct = (e) => {
+    e.preventDefault();
+    if (!engine || menuOpen) return;
+    const act = btn.dataset.tact;
+    if (act === 'atk') applyActionOutcome(engine.triggerCleave());
+    else if (act === 'parry') applyActionOutcome(engine.triggerShieldBash());
+    else if (act === 'rend') applyActionOutcome(engine.triggerRend());
+    else if (act === 'blood') applyActionOutcome(engine.triggerBloodthirst());
+    else if (act === 'dash') engine.triggerDash();
+    else if (act === 'flask') applyActionOutcome(engine.useHealingFlask());
+    else if (act === 'mount') pushLog(engine.toggleMount());
+    else if (act === 'use') handleInteract();
+  };
+  btn.addEventListener('touchstart', triggerTouchAct, { passive: false });
+  btn.addEventListener('click', triggerTouchAct);
+});
 menuRandSeedBtn.onclick = () => {
   menuSeedInput.value = String(Math.floor(Math.random() * 900000) + 100000);
 };
@@ -838,9 +947,11 @@ function loop(now) {
   lastTime = now;
   elapsed += dt;
 
-  const forward = menuOpen ? 0 : (keys.has('KeyW') || keys.has('ArrowUp') ? 1 : 0) - (keys.has('KeyS') || keys.has('ArrowDown') ? 1 : 0);
-  const right = menuOpen ? 0 : (keys.has('KeyD') || keys.has('ArrowRight') ? 1 : 0) - (keys.has('KeyA') || keys.has('ArrowLeft') ? 1 : 0);
-  const sprint = !menuOpen && (keys.has('ShiftLeft') || keys.has('ShiftRight'));
+  const kbFwd = (keys.has('KeyW') || keys.has('ArrowUp') ? 1 : 0) - (keys.has('KeyS') || keys.has('ArrowDown') ? 1 : 0);
+  const kbRight = (keys.has('KeyD') || keys.has('ArrowRight') ? 1 : 0) - (keys.has('KeyA') || keys.has('ArrowLeft') ? 1 : 0);
+  const forward = menuOpen ? 0 : clamp(kbFwd + (-touchMoveY), -1, 1);
+  const right = menuOpen ? 0 : clamp(kbRight + touchMoveX, -1, 1);
+  const sprint = !menuOpen && (keys.has('ShiftLeft') || keys.has('ShiftRight') || touchSprint);
 
   const res = engine.update(dt, elapsed, { forward, right, sprint });
   if (res.xpGained > 0 && engine.grantXp(res.xpGained)) {

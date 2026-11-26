@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>ASHEN SCRIPT — Pure ASCII MMORPG + ARPG</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -21,6 +21,7 @@
       height: 100vh;
       background: #000000;
       cursor: crosshair;
+      touch-action: none;
     }
     .hud-overlay {
       position: fixed;
@@ -374,6 +375,80 @@
       text-align: center;
       line-height: 1.45;
     }
+    .mobile-controls {
+      position: fixed;
+      inset: 0;
+      z-index: 30;
+      pointer-events: none;
+      display: none;
+    }
+    .touch-joy-zone {
+      position: fixed;
+      left: 16px;
+      bottom: 24px;
+      width: 118px;
+      height: 118px;
+      border-radius: 50%;
+      background: rgba(5, 14, 16, 0.56);
+      border: 2px solid rgba(90, 168, 135, 0.65);
+      pointer-events: auto;
+      touch-action: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .touch-joy-knob {
+      width: 46px;
+      height: 46px;
+      border-radius: 50%;
+      background: rgba(105, 219, 124, 0.38);
+      border: 2px solid #8ce99a;
+      pointer-events: none;
+      transform: translate(0px, 0px);
+    }
+    .touch-actions {
+      position: fixed;
+      right: 12px;
+      bottom: 20px;
+      display: grid;
+      grid-template-columns: repeat(4, 52px);
+      gap: 6px;
+      pointer-events: auto;
+      touch-action: none;
+    }
+    .touch-btn {
+      height: 46px;
+      background: rgba(6, 16, 20, 0.78);
+      border: 1px solid #5aa887;
+      color: #d7f5e8;
+      font-family: inherit;
+      font-size: 10px;
+      font-weight: bold;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      user-select: none;
+      touch-action: none;
+    }
+    .touch-btn:active {
+      background: rgba(24, 72, 54, 0.9);
+      border-color: #ffd43b;
+      color: #ffe066;
+    }
+    .touch-btn.atk {
+      border-color: #ff8787;
+      color: #ffc9c9;
+    }
+    @media (max-width: 900px) {
+      .hud-top-left { min-width: 0; width: 58vw; font-size: 9px; padding: 4px 6px; }
+      .hud-top-right { width: 146px; font-size: 9px; padding: 4px 6px; }
+      #minimap-canvas { width: 108px; height: 108px; }
+      .hud-bottom-left { display: none; }
+      .hud-bottom-dock { display: none; }
+      .interact-prompt { bottom: 155px; font-size: 11px; }
+    }
   </style>
 </head>
 <body>
@@ -425,6 +500,15 @@
         <div class="menu-seg" id="menu-zoom-seg">
           <button class="ascii-btn" data-zoom="1" type="button">ON</button>
           <button class="ascii-btn" data-zoom="0" type="button">OFF</button>
+        </div>
+      </div>
+
+      <div class="menu-row">
+        <span id="lbl-touch">Touch Controls:</span>
+        <div class="menu-seg" id="menu-touch-seg">
+          <button class="ascii-btn" data-touch="auto" type="button">Auto</button>
+          <button class="ascii-btn" data-touch="on" type="button">ON</button>
+          <button class="ascii-btn" data-touch="off" type="button">OFF</button>
         </div>
       </div>
 
@@ -513,6 +597,22 @@
         <span class="skill-slot" data-skill="rain">9 Storm</span>
         <span class="skill-slot" data-skill="tree">0 Tree</span>
       </div>
+    </div>
+  </div>
+
+  <div id="mobile-controls" class="mobile-controls">
+    <div id="touch-joy-zone" class="touch-joy-zone">
+      <div id="touch-joy-knob" class="touch-joy-knob"></div>
+    </div>
+    <div class="touch-actions" id="touch-actions">
+      <button class="touch-btn atk" data-tact="atk" type="button">ATK</button>
+      <button class="touch-btn" data-tact="parry" type="button">PARRY</button>
+      <button class="touch-btn" data-tact="rend" type="button">REND</button>
+      <button class="touch-btn" data-tact="blood" type="button">BLOOD</button>
+      <button class="touch-btn" data-tact="dash" type="button">DASH</button>
+      <button class="touch-btn" data-tact="flask" type="button">FLASK</button>
+      <button class="touch-btn" data-tact="mount" type="button">MOUNT</button>
+      <button class="touch-btn" data-tact="use" type="button">USE</button>
     </div>
   </div>
 

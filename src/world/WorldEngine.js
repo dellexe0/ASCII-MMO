@@ -392,12 +392,12 @@ export class WorldEngine {
                 : this.rng() > 0.52
                   ? 'pine'
                   : 'clearing_oak';
-      this.trees.push({ x, y, kind, scale: 0.88 + this.rng() * 0.42 });
+      this.trees.push({ x, y, kind, scale: 1.02 + this.rng() * 0.45 });
       if (kind !== 'dead') this.colliders.push({ x, y, r: 15 });
     }
 
-    // Scattered Shoreline & Field Boulders across vast 8800x8800 world
-    for (let i = 0; i < 1800 && this.boulders.length < 68; i++) {
+    // Scattered Prominent Shoreline & Field Boulders across vast 8800x8800 world
+    for (let i = 0; i < 2400 && this.boulders.length < 105; i++) {
       const x = (this.rng() - 0.5) * 7600;
       const y = (this.rng() - 0.5) * 7600;
       const elev = this.worldMap.getElevation(x, y);
@@ -410,8 +410,8 @@ export class WorldEngine {
       if (Math.hypot(x - this.worldMap.cryptPos.x, y - this.worldMap.cryptPos.y) < 155) continue;
       if (Math.hypot(x - this.worldMap.highGroundPos.x, y - this.worldMap.highGroundPos.y) < 155) continue;
       if (Math.hypot(x - this.worldMap.citadelPos.x, y - this.worldMap.citadelPos.y) < 200) continue;
-      const rx = 20 + this.rng() * 18;
-      const ry = 14 + this.rng() * 14;
+      const rx = 25 + this.rng() * 23;
+      const ry = 17 + this.rng() * 17;
       const biome = this.worldMap.getBiomeId(x, y);
       this.boulders.push({ x, y, rx, ry, moss: this.rng() > 0.45, autumn: biome === 'crimson_crag' || biome === 'cinder_crypt' || biome === 'obelisk_sanctum' });
       this.colliders.push({ x, y, r: rx * 0.72 });
@@ -2853,8 +2853,10 @@ export class WorldEngine {
         if (clumpVal < -0.34 && h1 > 0.28) continue;
 
         computeShadowAndWarmth(wx, wy);
-        const shadow = Math.max(0.36, _outShadow * clamp(1.0 + slope * 0.028, 0.68, 1.2));
+        const slopeShade = clamp(1.0 + slope * 0.052, 0.52, 1.44);
+        const shadow = Math.max(0.36, _outShadow * slopeShade);
         const warm = _outWarm;
+        const isContourBand = wz > 4 && Math.abs((wz % 10) - 5) < 0.72 && Math.abs(slope) > 2;
 
         const isCrimson = gs === 4;
         const isAshen = gs === 5;
@@ -2922,6 +2924,8 @@ export class WorldEngine {
           ch = h2 > 0.72 ? '✦' : h2 > 0.45 ? '*' : 'o';
         } else if (crushed) {
           ch = swayX > 0.5 ? '/' : swayX < -0.5 ? '\\' : '~';
+        } else if (isContourBand && h2 < 0.42) {
+          ch = slope > 0 ? '-' : '~';
         } else if (!isTallBlade) {
           ch = h3 > 0.55 ? ',' : '.';
         } else if (swayX > 1.75) {
@@ -3009,9 +3013,9 @@ export class WorldEngine {
 
     // 5. Semi-3D Stratified Cliff Boulders, Autumn Crimson Canyon Walls & Twin Waterfall
     const emitBoulder3DProp = (bx, by, rx, ry, hasMoss, isAutumn, cachePrefix) => {
-      const cols = clamp(Math.round(rx * 0.92), 22, 46);
-      const rows = clamp(Math.round(ry * 0.72), 16, 34);
-      const bCell = ((ry * 3.1) / rows) * 1.24;
+      const cols = clamp(Math.round(rx * 1.05), 26, 52);
+      const rows = clamp(Math.round(ry * 0.82), 18, 38);
+      const bCell = ((ry * 3.2) / rows) * 1.38;
       const g = scaledProp(cols, rows, bCell);
       const bz = this.worldMap.getTerrainZ(bx, by);
       emitPureAscii3DProp({
@@ -3054,8 +3058,8 @@ export class WorldEngine {
       }
     }
 
-    // 6. Crisp High-Resolution Sculpted Trees (Y-sorted back-to-front so trunks & crowns never clip awkwardly!)
-    const tGrid = scaledProp(44, 48, 2.65);
+    // 6. Prominent High-Resolution Sculpted Trees (Y-sorted back-to-front)
+    const tGrid = scaledProp(48, 52, 2.95);
     const visTrees = [];
     for (const t of this.trees) {
       if (t.x < minX - 95 || t.x > maxX + 95 || t.y < minY - 95 || t.y > maxY + 110) continue;
@@ -3075,8 +3079,8 @@ export class WorldEngine {
         worldTiltY: WORLD_TILT_Y,
         cols: tGrid.cols,
         rows: tGrid.rows,
-        worldSpanX: 84 * sc,
-        worldSpanY: 96 * sc,
+        worldSpanX: 90 * sc,
+        worldSpanY: 102 * sc,
         cellScreenSize: tGrid.cellScreenSize,
         alphaMult: 0.96,
         lanternPos: lp,

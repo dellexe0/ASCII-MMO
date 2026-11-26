@@ -813,13 +813,13 @@ export class Ascii3DBuffer {
         const shadeBoost = isRefl
           ? 0.58
           : matType === 5 || matType === 8
-            ? 0.68 + lit * 0.78
+            ? 0.84 + lit * 0.92
             : matType === 4
               ? 0.44 + lit * 0.70
               : matType === 2
                 ? 0.44 + lit * 1.04
                 : 0.48 + lit * 0.92;
-        const silRim = isSil && !isRefl && matType !== 5 && matType !== 8 ? (rimColor ? 0.4 : 0.28) : 0;
+        const silRim = isSil && !isRefl && matType !== 8 ? (matType === 5 ? 0.18 : rimColor ? 0.4 : 0.28) : 0;
         let rOut = r * shadeBoost + warmLight * (matType === 5 ? 0.24 : 0.48) + (rimColor ? rimColor[0] * silRim : silRim * 0.85) + effSpec * 0.42;
         let gOut = g * shadeBoost + warmLight * (matType === 5 ? 0.14 : 0.24) + (rimColor ? rimColor[1] * silRim : silRim * 0.92) + effSpec * 0.44;
         let bOut = b * (shadeBoost + (isRefl ? 0.12 : 0)) - warmLight * 0.06 + (rimColor ? rimColor[2] * silRim : silRim) + effSpec * 0.48;

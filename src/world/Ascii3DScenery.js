@@ -247,15 +247,15 @@ export function buildTree3D(buf, t, elapsed) {
  * 4. 3D Stratified Boulder / Cliff Formation + Sunlit Moss Cap!
  */
 export function buildBoulder3D(buf, rx, ry, hasMoss, isAutumn) {
-  const stoneMain = isAutumn ? matRgb(0.66, 0.28, 0.16, 3) : matRgb(0.54, 0.62, 0.72, 3);
-  const stoneRim = isAutumn ? matRgb(0.84, 0.40, 0.22, 3) : matRgb(0.76, 0.84, 0.94, 3);
-  const moss = matRgb(0.28, 0.74, 0.30, 5);
-  const hZ = ry * 1.28;
+  const stoneMain = isAutumn ? matRgb(0.72, 0.32, 0.18, 3) : matRgb(0.60, 0.70, 0.82, 3);
+  const stoneRim = isAutumn ? matRgb(0.90, 0.44, 0.24, 3) : matRgb(0.84, 0.92, 1.00, 3);
+  const moss = matRgb(0.32, 0.84, 0.34, 5);
+  const hZ = ry * 1.38;
 
-  buf.addEllipsoid(0, 0, hZ * 0.46, rx * 1.05, ry * 0.98, hZ * 0.76, stoneMain);
-  buf.addEllipsoid(rx * 0.26, -ry * 0.16, hZ * 0.76, rx * 0.66, ry * 0.62, hZ * 0.60, stoneRim);
+  buf.addEllipsoid(0, 0, hZ * 0.46, rx * 1.12, ry * 1.05, hZ * 0.80, stoneMain);
+  buf.addEllipsoid(rx * 0.28, -ry * 0.18, hZ * 0.80, rx * 0.72, ry * 0.68, hZ * 0.64, stoneRim);
   if (hasMoss) {
-    buf.addEllipsoid(-rx * 0.16, -ry * 0.12, hZ * 1.04, rx * 0.58, ry * 0.54, hZ * 0.26, moss);
+    buf.addEllipsoid(-rx * 0.16, -ry * 0.12, hZ * 1.08, rx * 0.62, ry * 0.58, hZ * 0.28, moss);
   }
 }
 

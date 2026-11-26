@@ -105,7 +105,7 @@ export class WorldSketchMap {
       { x:  980,  y:  1660 * flipNS, rx: 960,  ry: 720,  h: 0.32 }
     ];
 
-    // Procedural Rolling Hills
+    // Procedural Rolling Hills (pronounced 3D relief!)
     this.hillNodes = [];
     for (let i = 0; i < 32; i++) {
       const a = rng() * Math.PI * 2;
@@ -114,7 +114,7 @@ export class WorldSketchMap {
         x: Math.cos(a) * d,
         y: Math.sin(a) * d,
         r: 340 + rng() * 420,
-        amp: (rng() > 0.28 ? 1 : -0.55) * (0.07 + rng() * 0.13)
+        amp: (rng() > 0.25 ? 1 : -0.65) * (0.12 + rng() * 0.18)
       });
     }
 
@@ -340,7 +340,7 @@ export class WorldSketchMap {
     const elev = preElev !== null ? preElev : this.getElevation(x, y);
     if (elev <= 0.015) return 0;
     const shoreEase = smoothstep(0.015, 0.095, elev);
-    return clamp((elev - 0.015) * 72 * (0.55 + 0.45 * shoreEase), 0, 46);
+    return clamp((elev - 0.015) * 108 * (0.55 + 0.45 * shoreEase), 0, 68);
   }
 
   getRiverFlow(x, y) {
