@@ -626,7 +626,7 @@ export class Ascii3DBuffer {
 
     for (let py = 0; py < rows; py++) {
       const ly = this.originY + (py + 0.5) * this.stepY;
-      const fadeRefl = isRefl ? clamp(1.04 - (py / rows) * 0.45, 0.3, 1.0) : 1.0;
+      const fadeRefl = isRefl ? clamp(1.04 - (py / rows) * 0.35, 0.45, 1.0) : 1.0;
       const waveScreenX = isRefl
         ? Math.sin(py * 0.44 + elapsed * 4.4 + anchorY * 0.05) * (1.5 + (py / rows) * 2.0)
         : 0;
@@ -811,7 +811,7 @@ export class Ascii3DBuffer {
 
         const effSpec = matType === 5 || matType === 8 ? 0 : matType === 4 ? spec * 0.35 : spec;
         const shadeBoost = isRefl
-          ? 0.58
+          ? 0.86
           : matType === 5 || matType === 8
             ? 0.84 + lit * 0.92
             : matType === 4
@@ -822,7 +822,7 @@ export class Ascii3DBuffer {
         const silRim = isSil && !isRefl && matType !== 8 ? (matType === 5 ? 0.18 : rimColor ? 0.4 : 0.28) : 0;
         let rOut = r * shadeBoost + warmLight * (matType === 5 ? 0.24 : 0.48) + (rimColor ? rimColor[0] * silRim : silRim * 0.85) + effSpec * 0.42;
         let gOut = g * shadeBoost + warmLight * (matType === 5 ? 0.14 : 0.24) + (rimColor ? rimColor[1] * silRim : silRim * 0.92) + effSpec * 0.44;
-        let bOut = b * (shadeBoost + (isRefl ? 0.12 : 0)) - warmLight * 0.06 + (rimColor ? rimColor[2] * silRim : silRim) + effSpec * 0.48;
+        let bOut = b * (shadeBoost + (isRefl ? 0.16 : 0)) - warmLight * 0.06 + (rimColor ? rimColor[2] * silRim : silRim) + effSpec * 0.48;
 
         if (emissive > 0.45) {
           rOut = Math.max(rOut, r * (0.85 + emissive * 0.45));
@@ -1044,7 +1044,7 @@ export function flushBakedStaticCells(
       }
     }
 
-    const fadeRefl = isRefl ? clamp(1.04 - (c.py / rows) * 0.45, 0.3, 1.0) : 1.0;
+    const fadeRefl = isRefl ? clamp(1.04 - (c.py / rows) * 0.35, 0.45, 1.0) : 1.0;
     const waveScreenX = isRefl
       ? Math.sin(c.py * 0.44 + elapsed * 4.4 + anchorY * 0.05) * (1.5 + (c.py / rows) * 2.0)
       : 0;

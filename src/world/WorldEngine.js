@@ -2646,7 +2646,7 @@ export class WorldEngine {
         worldSpanX: 84 * sc,
         worldSpanY: 96 * sc,
         cellScreenSize: g.cellScreenSize,
-        alphaMult: 0.48,
+        alphaMult: 0.62,
         isReflection: true,
         mirrorClipCheck: (rx, ry) => this.worldMap.isWater(rx, ry),
         lanternPos: lp,
@@ -2655,10 +2655,16 @@ export class WorldEngine {
       });
     }
 
+    const hasWaterBelow = (wx, wy) =>
+      this.worldMap.isWater(wx, wy + 4) ||
+      this.worldMap.isWater(wx, wy + 22) ||
+      this.worldMap.isWater(wx, wy + 40) ||
+      this.worldMap.isWater(wx, wy + 56);
+
     // Mirrored 3D Skeletons, Wolves, All 8 Bosses, Hero Knight & Horse in Water!
     for (const e of this.enemies) {
       if (!e.alive || e.x < minX - 80 || e.x > maxX + 80 || e.y < minY - 80 || e.y > maxY + 80) continue;
-      if (!this.worldMap.isWater(e.x, e.y + 18) && !this.worldMap.isWater(e.x, e.y + 34)) continue;
+      if (!hasWaterBelow(e.x, e.y)) continue;
       if (!e.isBoss) {
         const g = scaledSprite(40, 40, 2.2);
         emitPureAscii3DSprite({
@@ -2672,7 +2678,7 @@ export class WorldEngine {
           rows: g.rows,
           worldSpan: 44,
           cellScreenSize: g.cellScreenSize,
-          alphaMult: 0.56,
+          alphaMult: 0.72,
           isReflection: true,
           mirrorClipCheck: (rx, ry) => this.worldMap.isWater(rx, ry),
           lanternPos: lp,
@@ -2695,7 +2701,7 @@ export class WorldEngine {
           rows: g.rows,
           worldSpan: isDragon ? 148 : isGolem ? 116 : isSpider ? 104 : 96,
           cellScreenSize: g.cellScreenSize,
-          alphaMult: 0.54,
+          alphaMult: 0.72,
           isReflection: true,
           mirrorClipCheck: (rx, ry) => this.worldMap.isWater(rx, ry),
           lanternPos: lp,
@@ -2708,7 +2714,7 @@ export class WorldEngine {
     // Mirrored 3D Adventurers & Remote Multiplayer Peers in Water!
     for (const a of this.adventurers) {
       if (a.x < minX - 80 || a.x > maxX + 80 || a.y < minY - 80 || a.y > maxY + 80) continue;
-      if (!this.worldMap.isWater(a.x, a.y + 22) && !this.worldMap.isWater(a.x, a.y + 4)) continue;
+      if (!hasWaterBelow(a.x, a.y)) continue;
       const g = scaledSprite(56, 56, 2.45);
       emitPureAscii3DSprite({
         renderer,
@@ -2721,7 +2727,7 @@ export class WorldEngine {
         rows: g.rows,
         worldSpan: 86,
         cellScreenSize: g.cellScreenSize,
-        alphaMult: 0.56,
+        alphaMult: 0.78,
         isReflection: true,
         mirrorClipCheck: (rx, ry) => this.worldMap.isWater(rx, ry),
         lanternPos: lp,
@@ -2733,7 +2739,7 @@ export class WorldEngine {
     if (this.remotePlayers && this.remotePlayers.length > 0) {
       for (const rp of this.remotePlayers) {
         if (rp.x < minX - 80 || rp.x > maxX + 80 || rp.y < minY - 80 || rp.y > maxY + 80) continue;
-        if (!this.worldMap.isWater(rp.x, rp.y + 22) && !this.worldMap.isWater(rp.x, rp.y + 4)) continue;
+        if (!hasWaterBelow(rp.x, rp.y)) continue;
         const g = scaledSprite(56, 56, 2.45);
         emitPureAscii3DSprite({
           renderer,
@@ -2746,7 +2752,7 @@ export class WorldEngine {
           rows: g.rows,
           worldSpan: 86,
           cellScreenSize: g.cellScreenSize,
-          alphaMult: 0.58,
+          alphaMult: 0.78,
           isReflection: true,
           mirrorClipCheck: (rx, ry) => this.worldMap.isWater(rx, ry),
           lanternPos: lp,
@@ -2770,7 +2776,7 @@ export class WorldEngine {
       }
     }
 
-    if (this.worldMap.isWater(this.horseX, this.horseY + 24) || this.worldMap.isWater(this.horseX, this.horseY + 4)) {
+    if (hasWaterBelow(this.horseX, this.horseY)) {
       const g = scaledSprite(62, 62, 2.55);
       emitPureAscii3DSprite({
         renderer,
@@ -2783,7 +2789,7 @@ export class WorldEngine {
         rows: g.rows,
         worldSpan: 102,
         cellScreenSize: g.cellScreenSize,
-        alphaMult: 0.58,
+        alphaMult: 0.78,
         isReflection: true,
         mirrorClipCheck: (rx, ry) => this.worldMap.isWater(rx, ry),
         lanternPos: lp,
@@ -2806,7 +2812,7 @@ export class WorldEngine {
       });
     }
 
-    if (!this.isMounted && (this.worldMap.isWater(this.x, this.y + 22) || this.worldMap.isWater(this.x, this.y + 4))) {
+    if (!this.isMounted && hasWaterBelow(this.x, this.y)) {
       const g = scaledSprite(50, 50, 2.45);
       emitPureAscii3DSprite({
         renderer,
@@ -2819,7 +2825,7 @@ export class WorldEngine {
         rows: g.rows,
         worldSpan: 72,
         cellScreenSize: g.cellScreenSize,
-        alphaMult: 0.6,
+        alphaMult: 0.78,
         isReflection: true,
         mirrorClipCheck: (rx, ry) => this.worldMap.isWater(rx, ry),
         lanternPos: lp,
