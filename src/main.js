@@ -4,6 +4,7 @@ import { ARCHETYPES, PASSIVE_TREE, CRAFT_MATERIALS, RUNE_PALETTE, formatItemMods
 import { WORLD_SIZE, WorldSketchMap } from './world/WorldSketchMap.js';
 import { WorldEngine } from './world/WorldEngine.js';
 import { renderCraftPreviewScene } from './entities/AsciiSprites.js';
+import { RoomMultiplayer } from './net/RoomMultiplayer.js';
 
 function clamp(v, min, max) {
   return Math.max(min, Math.min(max, v));
@@ -98,6 +99,12 @@ const openMenuBtn = document.getElementById('open-menu-btn');
 const mobileControlsEl = document.getElementById('mobile-controls');
 const touchJoyZone = document.getElementById('touch-joy-zone');
 const touchJoyKnob = document.getElementById('touch-joy-knob');
+const lblMpEl = document.getElementById('lbl-mp');
+const mpStatusEl = document.getElementById('mp-status-el');
+const mpNameInput = document.getElementById('mp-name-input');
+const mpCreateBtn = document.getElementById('mp-create-btn');
+const mpCodeInput = document.getElementById('mp-code-input');
+const mpJoinBtn = document.getElementById('mp-join-btn');
 
 const I18N = {
   ru: {
@@ -110,6 +117,10 @@ const I18N = {
     autozoom: 'Авто-зум:',
     touch: 'Сенсор (телефон):',
     touchModes: { auto: 'Авто', on: 'ВКЛ', off: 'ВЫКЛ' },
+    mpLabel: 'Мультиплеер (код комнаты):',
+    mpCreate: 'Создать',
+    mpJoin: 'Войти',
+    mpOffline: 'Оффлайн',
     seed: 'Сид мира:',
     rand: 'Случайный',
     enter: '[ ВОЙТИ В МИР ]',
@@ -117,7 +128,7 @@ const I18N = {
     hint: 'WASD: Движение • Shift: Галоп • ЛКМ/1-4: Удары • Space: Рывок • F: Конь • E: Действие • Колесо: Зум',
     classes: { knight: 'Рыцарь', berserker: 'Берсерк', bulwark: 'Оплот', assassin: 'Ассасин' },
     details: { '3.5': 'Высокая', '4.0': 'Средняя', '4.7': 'Крупная' },
-    weathers: { clear: 'Ясная ночь', storm: 'Гроза' },
+    weathers: { clear: 'Ясная ночь', storm: 'Гроза', ashstorm: 'Пепельная буря' },
     on: 'ВКЛ',
     off: 'ВЫКЛ',
     btnCraft: '[K] Крафт',
@@ -150,6 +161,10 @@ const I18N = {
     autozoom: 'Auto Zoom:',
     touch: 'Touch Controls:',
     touchModes: { auto: 'Auto', on: 'ON', off: 'OFF' },
+    mpLabel: 'Multiplayer (Room Code):',
+    mpCreate: 'Create Room',
+    mpJoin: 'Join',
+    mpOffline: 'Offline',
     seed: 'Realm Seed:',
     rand: 'Random',
     enter: '[ ENTER REALM ]',
@@ -157,7 +172,7 @@ const I18N = {
     hint: 'WASD: Move • Shift: Sprint • LMB/1-4: Skills • Space: Dash • F: Mount • E: Interact • Wheel: Zoom',
     classes: { knight: 'Knight', berserker: 'Berserker', bulwark: 'Bulwark', assassin: 'Assassin' },
     details: { '3.5': 'High', '4.0': 'Balanced', '4.7': 'Bold' },
-    weathers: { clear: 'Clear Night', storm: 'Storm' },
+    weathers: { clear: 'Clear Night', storm: 'Storm', ashstorm: 'Ash Tempest' },
     on: 'ON',
     off: 'OFF',
     btnCraft: '[K] Craft',
@@ -189,7 +204,7 @@ try {
 
 let currentLang = savedPrefs.lang === 'en' ? 'en' : 'ru';
 let selectedArch = savedPrefs.arch || 'knight';
-let selectedWeather = savedPrefs.weather === 'storm' ? 'storm' : 'clear';
+let selectedWeather = savedPrefs.weather === 'storm' || savedPrefs.weather === 'ashstorm' ? savedPrefs.weather : 'clear';
 let touchMode = savedPrefs.touchMode || 'auto';
 let touchMoveX = 0;
 let touchMoveY = 0;
@@ -270,6 +285,10 @@ function applyLocalization() {
   lblWeatherEl.textContent = t.weather;
   lblAutozoomEl.textContent = t.autozoom;
   if (lblTouchEl) lblTouchEl.textContent = t.touch;
+  if (lblMpEl) lblMpEl.textContent = t.mpLabel;
+  if (mpCreateBtn) mpCreateBtn.textContent = t.mpCreate;
+  if (mpJoinBtn) mpJoinBtn.textContent = t.mpJoin;
+  if (mpStatusEl && !multiplayer.roomCode) mpStatusEl.textContent = t.mpOffline;
   lblSeedEl.textContent = t.seed;
   menuRandSeedBtn.textContent = t.rand;
   menuStartBtn.textContent = hasEnteredOnce ? t.resume : t.enter;
@@ -339,7 +358,7 @@ function enterRealmFromMenu() {
     generateRealm(reqSeed, selectedArch);
   }
   if (engine) {
-    engine.rainEnabled = selectedWeather === 'storm';
+    engine.setWeatherMode(selectedWeather);
   }
   hasEnteredOnce = true;
   applyLocalization();
@@ -352,7 +371,7 @@ function generateRealm(seed = Math.floor(Math.random() * 900000) + 100000, arch 
   worldMap = new WorldSketchMap(seed);
   worldMap.renderMinimap(minimapBgCanvas.getContext('2d'), minimapBgCanvas.width, minimapBgCanvas.height);
   engine = new WorldEngine(worldMap, arch || (engine ? engine.build.archetypeId : 'knight'));
-  engine.rainEnabled = selectedWeather === 'storm';
+  engine.setWeatherMode(selectedWeather);
   if (menuSeedInput) menuSeedInput.value = String(seed);
   cam.x = engine.x;
   cam.y = engine.y - 34 - ((engine.z || 0) * LIFT_Z) / WORLD_TILT_Y;
@@ -722,7 +741,7 @@ document.querySelectorAll('#menu-detail-seg button').forEach((b) => {
 document.querySelectorAll('#menu-weather-seg button').forEach((b) => {
   b.onclick = () => {
     selectedWeather = b.dataset.weather;
-    if (engine) engine.rainEnabled = selectedWeather === 'storm';
+    if (engine) engine.setWeatherMode(selectedWeather);
     applyLocalization();
     savePrefs();
   };
@@ -811,6 +830,52 @@ document.querySelectorAll('#touch-actions .touch-btn').forEach((btn) => {
   btn.addEventListener('touchstart', triggerTouchAct, { passive: false });
   btn.addEventListener('click', triggerTouchAct);
 });
+const multiplayer = new RoomMultiplayer({
+  onStatus: (state, code, count = 1) => {
+    if (!mpStatusEl) return;
+    if (state === 'connecting') mpStatusEl.textContent = `... ${code}`;
+    else if (state === 'host') mpStatusEl.textContent = `HOST: ${code} (${count})`;
+    else if (state === 'guest') mpStatusEl.textContent = `ROOM: ${code} (${count})`;
+    else if (state === 'error') mpStatusEl.textContent = `ERR: ${code}`;
+    else mpStatusEl.textContent = (I18N[currentLang] || I18N.ru).mpOffline;
+  },
+  onRealmSync: (seed) => {
+    menuSeedInput.value = String(seed);
+    generateRealm(seed, selectedArch);
+  },
+  onToast: (msg) => showToast(msg, 3.2)
+});
+
+if (mpCreateBtn) {
+  mpCreateBtn.onclick = async () => {
+    const seed = Number(menuSeedInput.value) || 842109;
+    const code = await multiplayer.createRoom(seed, mpNameInput ? mpNameInput.value : 'Knight');
+    if (mpCodeInput) mpCodeInput.value = code;
+  };
+}
+if (mpJoinBtn) {
+  mpJoinBtn.onclick = async () => {
+    const code = mpCodeInput ? mpCodeInput.value : '';
+    await multiplayer.joinRoom(code, mpNameInput ? mpNameInput.value : 'Knight');
+  };
+}
+
+// 2-Finger Pinch-to-Zoom for Phones on Game Canvas
+let pinchDist0 = 0;
+let pinchZoom0 = 1.38;
+canvas.addEventListener('touchstart', (e) => {
+  if (e.touches.length === 2) {
+    pinchDist0 = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY) || 1;
+    pinchZoom0 = cam.targetZoom;
+  }
+}, { passive: true });
+canvas.addEventListener('touchmove', (e) => {
+  if (e.touches.length === 2 && pinchDist0 > 0) {
+    const d = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+    cam.targetZoom = clamp(pinchZoom0 * (d / pinchDist0), 0.52, 3.0);
+  }
+}, { passive: true });
+
 menuRandSeedBtn.onclick = () => {
   menuSeedInput.value = String(Math.floor(Math.random() * 900000) + 100000);
 };
@@ -977,6 +1042,24 @@ function loop(now) {
   const zoomOutScale = cam.zoom < 1.0 ? lerp(1.22, 1.0, clamp((cam.zoom - 0.52) / 0.48, 0, 1)) : 1.0;
   cam.glyphScale = clamp((baseSize / 4.0) * autoBoost * zoomOutScale, 0.72, 1.35);
 
+  // Sync multiplayer peers at ~18Hz
+  if (engine) {
+    engine.remotePlayers = multiplayer.tick(now, {
+      x: engine.x,
+      y: engine.y,
+      z: engine.z || 0,
+      yaw: engine.yaw || 0,
+      facing: engine.facing || 'right',
+      mounted: engine.isMounted,
+      moving: engine.isMoving,
+      slash: engine.slashTimer > 0 ? 1 - engine.slashTimer / engine.slashDuration : 0,
+      swordFx: engine.build.computed.swordFx,
+      armorId: engine.build.armorMaterialId,
+      armorHex: engine.build.computed.armorMaterial?.hex || '#74c0fc',
+      lv: engine.build.level
+    });
+  }
+
   // 100% Pure ASCII Render over #000000!
   engine.render(ascii, cam, elapsed);
   ascii.render();
@@ -1031,6 +1114,17 @@ function loop(now) {
     document.querySelector('[data-skill="3"]').classList.toggle('cd', engine.rendCooldown > 0);
     document.querySelector('[data-skill="4"]').classList.toggle('cd', engine.bloodCooldown > 0);
     document.querySelector('[data-skill="dash"]').classList.toggle('cd', engine.dashCooldown > 0);
+
+    const tbParry = document.querySelector('#touch-actions [data-tact="parry"]');
+    const tbRend  = document.querySelector('#touch-actions [data-tact="rend"]');
+    const tbBlood = document.querySelector('#touch-actions [data-tact="blood"]');
+    const tbDash  = document.querySelector('#touch-actions [data-tact="dash"]');
+    const tbFlask = document.querySelector('#touch-actions [data-tact="flask"]');
+    if (tbParry) tbParry.classList.toggle('cd', engine.bashCooldown > 0);
+    if (tbRend)  tbRend.classList.toggle('cd', engine.rendCooldown > 0);
+    if (tbBlood) tbBlood.classList.toggle('cd', engine.bloodCooldown > 0);
+    if (tbDash)  tbDash.classList.toggle('cd', engine.dashCooldown > 0);
+    if (tbFlask) tbFlask.classList.toggle('cd', engine.flaskCooldown > 0 || engine.flasks <= 0);
 
     renderMinimap();
 

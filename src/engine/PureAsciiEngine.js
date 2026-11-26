@@ -158,8 +158,8 @@ export class PureAsciiEngine {
       void main() {
         vec3 col = texture(uScene, vUv).rgb;
         float lum = dot(col, vec3(0.2126, 0.7152, 0.0722));
-        float boost = smoothstep(0.28, 0.85, lum);
-        outColor = vec4(col * boost * 1.35, 1.0);
+        float boost = smoothstep(0.36, 0.90, lum);
+        outColor = vec4(col * boost * 1.28, 1.0);
       }
     `;
 
@@ -189,12 +189,13 @@ export class PureAsciiEngine {
       void main() {
         vec3 scene = texture(uScene, vUv).rgb;
         vec3 bloom = texture(uBloom, vUv).rgb;
-        // Deep midnight twilight horizon mist at top of screen behind distant forest & citadel!
-        float skyFactor = smoothstep(0.54, 0.98, vUv.y) * uHorizon;
-        vec3 twilight = mix(vec3(0.0, 0.0, 0.0), vec3(0.055, 0.105, 0.175), skyFactor);
-        vec3 finalCol = twilight * (1.0 - clamp(dot(scene, vec3(1.2)), 0.0, 0.7)) + scene + bloom * 0.78;
-        // Gentle subtle ACES-like shoulder so bright silver rims glow smoothly without clipping harsh
-        finalCol = finalCol / (1.0 + finalCol * 0.18);
+        // Deep midnight twilight horizon mist + subtle cinematic vignette
+        float skyFactor = smoothstep(0.56, 0.98, vUv.y) * uHorizon;
+        vec3 twilight = mix(vec3(0.0, 0.0, 0.0), vec3(0.048, 0.095, 0.165), skyFactor);
+        vec2 centered = vUv - 0.5;
+        float vig = 1.0 - dot(centered, centered) * 0.28;
+        vec3 finalCol = twilight * (1.0 - clamp(dot(scene, vec3(1.2)), 0.0, 0.72)) + scene * 1.06 + bloom * 0.64;
+        finalCol = (finalCol * vig) / (1.0 + finalCol * 0.16);
         outColor = vec4(finalCol, 1.0);
       }
     `;

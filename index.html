@@ -384,13 +384,14 @@
     }
     .touch-joy-zone {
       position: fixed;
-      left: 16px;
-      bottom: 24px;
-      width: 118px;
-      height: 118px;
+      left: 18px;
+      bottom: 22px;
+      width: 124px;
+      height: 124px;
       border-radius: 50%;
-      background: rgba(5, 14, 16, 0.56);
-      border: 2px solid rgba(90, 168, 135, 0.65);
+      background: radial-gradient(circle, rgba(16, 48, 38, 0.45) 0%, rgba(4, 12, 14, 0.72) 70%);
+      border: 2px solid rgba(105, 219, 124, 0.55);
+      box-shadow: 0 0 18px rgba(32, 120, 88, 0.25), inset 0 0 14px rgba(0, 0, 0, 0.65);
       pointer-events: auto;
       touch-action: none;
       display: flex;
@@ -398,56 +399,81 @@
       justify-content: center;
     }
     .touch-joy-knob {
-      width: 46px;
-      height: 46px;
+      width: 48px;
+      height: 48px;
       border-radius: 50%;
-      background: rgba(105, 219, 124, 0.38);
-      border: 2px solid #8ce99a;
+      background: radial-gradient(circle at 35% 35%, rgba(140, 233, 154, 0.78), rgba(40, 118, 82, 0.65));
+      border: 2px solid #b2f2bb;
+      box-shadow: 0 0 12px rgba(105, 219, 124, 0.45);
       pointer-events: none;
       transform: translate(0px, 0px);
     }
     .touch-actions {
       position: fixed;
-      right: 12px;
-      bottom: 20px;
-      display: grid;
-      grid-template-columns: repeat(4, 52px);
-      gap: 6px;
-      pointer-events: auto;
+      right: 16px;
+      bottom: 18px;
+      width: 196px;
+      height: 196px;
+      pointer-events: none;
       touch-action: none;
     }
     .touch-btn {
-      height: 46px;
-      background: rgba(6, 16, 20, 0.78);
-      border: 1px solid #5aa887;
+      position: absolute;
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background: rgba(6, 16, 20, 0.84);
+      border: 1.5px solid #5aa887;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.65);
       color: #d7f5e8;
       font-family: inherit;
-      font-size: 10px;
+      font-size: 9px;
       font-weight: bold;
-      border-radius: 6px;
       display: flex;
       align-items: center;
       justify-content: center;
       text-align: center;
       user-select: none;
+      pointer-events: auto;
       touch-action: none;
+      transition: transform 0.06s ease;
     }
     .touch-btn:active {
-      background: rgba(24, 72, 54, 0.9);
+      transform: scale(0.92);
+      background: rgba(24, 72, 54, 0.94);
       border-color: #ffd43b;
       color: #ffe066;
     }
-    .touch-btn.atk {
-      border-color: #ff8787;
-      color: #ffc9c9;
+    .touch-btn.cd {
+      opacity: 0.42;
+      border-color: #343a40;
+      color: #868e96;
     }
+    .touch-btn.atk {
+      right: 6px;
+      bottom: 6px;
+      width: 72px;
+      height: 72px;
+      font-size: 13px;
+      background: radial-gradient(circle, rgba(120, 24, 28, 0.88), rgba(36, 8, 12, 0.92));
+      border: 2px solid #ff8787;
+      box-shadow: 0 0 18px rgba(255, 107, 107, 0.35);
+      color: #ffe3e3;
+    }
+    .touch-btn[data-tact="parry"] { right: 86px; bottom: 8px; }
+    .touch-btn[data-tact="rend"]  { right: 76px; bottom: 66px; }
+    .touch-btn[data-tact="blood"] { right: 20px; bottom: 88px; }
+    .touch-btn[data-tact="dash"]  { right: 136px; bottom: 52px; border-color: #74c0fc; color: #d0ebff; }
+    .touch-btn[data-tact="flask"] { right: 128px; bottom: 112px; border-color: #ff6b6b; color: #ffc9c9; }
+    .touch-btn[data-tact="mount"] { right: 72px; bottom: 136px; border-color: #ffd43b; color: #fff3bf; }
+    .touch-btn[data-tact="use"]   { right: 14px; bottom: 144px; border-color: #69db7c; color: #d3f9d8; }
     @media (max-width: 900px) {
-      .hud-top-left { min-width: 0; width: 58vw; font-size: 9px; padding: 4px 6px; }
-      .hud-top-right { width: 146px; font-size: 9px; padding: 4px 6px; }
-      #minimap-canvas { width: 108px; height: 108px; }
+      .hud-top-left { min-width: 0; width: calc(100vw - 134px); font-size: 9px; line-height: 1.25; padding: 4px 6px; border-radius: 6px; }
+      .hud-top-right { width: 114px; font-size: 9px; padding: 4px 5px; gap: 3px; border-radius: 6px; }
+      #minimap-canvas { width: 92px; height: 92px; }
       .hud-bottom-left { display: none; }
       .hud-bottom-dock { display: none; }
-      .interact-prompt { bottom: 155px; font-size: 11px; }
+      .interact-prompt { bottom: 215px; font-size: 11px; }
     }
   </style>
 </head>
@@ -492,6 +518,7 @@
         <div class="menu-seg" id="menu-weather-seg">
           <button class="ascii-btn" data-weather="clear" type="button">Clear Night</button>
           <button class="ascii-btn" data-weather="storm" type="button">Storm</button>
+          <button class="ascii-btn" data-weather="ashstorm" type="button">Ash Tempest</button>
         </div>
       </div>
 
@@ -517,6 +544,19 @@
         <div class="menu-seg">
           <input id="menu-seed-input" class="menu-input" type="number" value="842109" />
           <button id="menu-rand-seed-btn" class="ascii-btn" type="button">Random</button>
+        </div>
+      </div>
+
+      <div class="menu-row" style="flex-direction:column;align-items:stretch;gap:6px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <span id="lbl-mp">Multiplayer (Room Code):</span>
+          <span id="mp-status-el" style="font-size:10px;color:#ffd43b;">Offline</span>
+        </div>
+        <div style="display:flex;gap:4px;flex-wrap:wrap;">
+          <input id="mp-name-input" class="menu-input" style="width:94px;" type="text" maxlength="12" value="Knight" placeholder="Name" />
+          <button id="mp-create-btn" class="ascii-btn" type="button">Create Room</button>
+          <input id="mp-code-input" class="menu-input" style="width:78px;text-transform:uppercase;" type="text" maxlength="6" placeholder="CODE" />
+          <button id="mp-join-btn" class="ascii-btn" type="button">Join</button>
         </div>
       </div>
 

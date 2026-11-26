@@ -137,16 +137,20 @@ export class WorldEngine {
     }
     this.rippleSpawnAccum = 0;
 
-    // Weather (Download(2), Download(6).mp4): toggleable Rain & Thunderstorm!
+    // Dynamic Multi-Layer Weather: Clear Night / Torrential Thunderstorm / Crimson Ash-Tempest
+    this.weatherMode = 'clear';
     this.rainEnabled = false;
     this.lightningFlash = 0;
-    this.lightningTimer = 7.5;
+    this.lightningTimer = 3.2;
+    this.lightningBolts = [];
     this.rainDrops = [];
-    for (let i = 0; i < 120; i++) {
+    for (let i = 0; i < 260; i++) {
+      const layer = i % 3;
       this.rainDrops.push({
-        ox: (this.rng() - 0.5) * 900,
-        oy: (this.rng() - 0.5) * 650,
-        speed: 440 + this.rng() * 180,
+        ox: (this.rng() - 0.5) * 1100,
+        oy: (this.rng() - 0.5) * 760,
+        speed: (layer === 2 ? 640 : layer === 1 ? 500 : 380) + this.rng() * 140,
+        layer,
         splashAge: 0,
         splashing: false
       });
@@ -181,6 +185,7 @@ export class WorldEngine {
     this.lootDrops = [];
     this.enemies = this._buildEnemies();
     this.adventurers = this._buildMMOAdventurers();
+    this.remotePlayers = [];
 
     // Static Grass, Relief Height & Water Terrain Lookup Caches (8800x8800 vast world!)
     this._gHalf = 880;
@@ -1147,9 +1152,19 @@ export class WorldEngine {
     }
   }
 
+  setWeatherMode(mode) {
+    this.weatherMode = mode === 'storm' || mode === 'ashstorm' ? mode : 'clear';
+    this.rainEnabled = this.weatherMode !== 'clear';
+    if (this.rainEnabled && this.lightningTimer > 2.2) this.lightningTimer = 1.4;
+  }
+
   toggleRainStorm() {
-    this.rainEnabled = !this.rainEnabled;
-    return this.rainEnabled ? 'Weather: [THUNDERSTORM RAIN] — Watch puddles & reflections.' : 'Weather: [MOONLIT CLEAR SKY].';
+    const order = ['clear', 'storm', 'ashstorm'];
+    const next = order[(order.indexOf(this.weatherMode || (this.rainEnabled ? 'storm' : 'clear')) + 1) % order.length];
+    this.setWeatherMode(next);
+    if (next === 'storm') return 'Weather: [TORRENTIAL THUNDERSTORM] — Forked lightning & heavy rain!';
+    if (next === 'ashstorm') return 'Weather: [CRIMSON ASH-TEMPEST] — Swirling embers & blood lightning!';
+    return 'Weather: [MOONLIT CLEAR SKY].';
   }
 
   _shatterDestructible(d, hitDirX, hitDirY, res) {
@@ -1737,26 +1752,50 @@ export class WorldEngine {
       if (this.floatingTexts[i].age >= this.floatingTexts[i].life) this.floatingTexts.splice(i, 1);
     }
 
-    // Rainstorm + Lightning Flash + Flying Shattered Debris + Spiderweb Snares
+    // Multi-Layer Thunderstorm / Crimson Ash-Tempest + Forked Lightning Bolts!
     if (this.rainEnabled) {
-      if (this.lightningFlash > 0) this.lightningFlash = Math.max(0, this.lightningFlash - dt * 2.4);
+      if (this.lightningFlash > 0) this.lightningFlash = Math.max(0, this.lightningFlash - dt * 2.8);
+      for (let i = this.lightningBolts.length - 1; i >= 0; i--) {
+        this.lightningBolts[i].age += dt;
+        if (this.lightningBolts[i].age >= this.lightningBolts[i].life) this.lightningBolts.splice(i, 1);
+      }
       this.lightningTimer -= dt;
       if (this.lightningTimer <= 0) {
-        this.lightningFlash = 0.85;
-        this.lightningTimer = 6.0 + this.rng() * 8.0;
+        this.lightningFlash = 1.0;
+        this.lightningTimer = 4.2 + this.rng() * 5.8;
+        this.shakeIntensity = Math.max(this.shakeIntensity, 4.2);
+        const bx0 = (this.rng() - 0.5) * 640;
+        const pts = [];
+        let cx = bx0;
+        let cy = -360;
+        for (let s = 0; s < 14; s++) {
+          const nx = cx + (this.rng() - 0.5) * 44;
+          const ny = cy + 36 + this.rng() * 14;
+          pts.push({ x1: cx, y1: cy, x2: nx, y2: ny, isFork: false });
+          if (s >= 2 && s <= 10 && this.rng() < 0.45) {
+            const fx = nx + (this.rng() > 0.5 ? 1 : -1) * (28 + this.rng() * 38);
+            const fy = ny + 32 + this.rng() * 24;
+            pts.push({ x1: nx, y1: ny, x2: fx, y2: fy, isFork: true });
+          }
+          cx = nx;
+          cy = ny;
+        }
+        this.lightningBolts.push({ pts, age: 0, life: 0.34, crimson: this.weatherMode === 'ashstorm' });
       }
+      const isAsh = this.weatherMode === 'ashstorm';
       for (const rd of this.rainDrops) {
         if (rd.splashing) {
           rd.splashAge += dt;
-          if (rd.splashAge > 0.32) {
+          if (rd.splashAge > 0.34) {
             rd.splashing = false;
-            rd.ox = (this.rng() - 0.5) * 900;
-            rd.oy = -340 - this.rng() * 140;
+            rd.ox = (this.rng() - 0.5) * 1100;
+            rd.oy = -380 - this.rng() * 140;
           }
         } else {
-          rd.ox -= rd.speed * 0.22 * dt;
-          rd.oy += rd.speed * dt;
-          if (rd.oy > 340) {
+          rd.ox -= rd.speed * (isAsh ? 0.58 : 0.30) * dt;
+          rd.oy += rd.speed * (isAsh ? 0.42 : 1.0) * dt;
+          if (rd.ox < -580) rd.ox += 1160;
+          if (rd.oy > 360) {
             rd.splashing = true;
             rd.splashAge = 0;
           }
@@ -1764,6 +1803,7 @@ export class WorldEngine {
       }
     } else {
       this.lightningFlash = 0;
+      this.lightningBolts.length = 0;
     }
 
     for (let i = this.debris.length - 1; i >= 0; i--) {
@@ -3250,6 +3290,58 @@ export class WorldEngine {
       renderer.drawText(toScreenX(a.x), toScreenY(a.y, aZ + 48), 7.5 * gScale, `<${a.name} L${a.lv}>`, 0.45, 0.88, 1.0, 0.84, false);
     }
 
+    // 9B. Live Cross-Platform Multiplayer Room Peers!
+    if (this.remotePlayers && this.remotePlayers.length > 0) {
+      for (const rp of this.remotePlayers) {
+        if (rp.x < minX - 90 || rp.x > maxX + 90 || rp.y < minY - 90 || rp.y > maxY + 90) continue;
+        const rZ = rp.z !== undefined ? rp.z : (this.worldMap.getWalkZ ? this.worldMap.getWalkZ(rp.x, rp.y) : 0);
+        emitPureAscii3DSprite({
+          renderer,
+          toScreenX,
+          toScreenY,
+          worldX: rp.x,
+          worldY: rp.y,
+          worldZ: rZ,
+          worldTiltY: WORLD_TILT_Y,
+          cols: advGrid.cols,
+          rows: advGrid.rows,
+          worldSpan: 86,
+          cellScreenSize: advGrid.cellScreenSize,
+          alphaMult: 0.99,
+          rimColor: [0.45, 1.0, 0.82],
+          lanternPos: lp,
+          elapsed,
+          enableMultiSize: true,
+          buildModel: (buf) =>
+            buildHeroKnight3D(buf, {
+              facing: rp.facing || 'right',
+              headingYaw: rp.yaw || 0,
+              isMounted: !!rp.mounted,
+              isMoving: !!rp.moving,
+              gaitPhase: elapsed * 8,
+              gallopBlend: 0.5,
+              slashProgress: rp.slash || 0,
+              swordFx: rp.swordFx || 'steel',
+              armorMaterial: { id: rp.armorId || 'steel', hex: rp.armorHex || '#74c0fc', trim: '#ffe066', halo: true },
+              elapsed,
+              showMountBody: !!rp.mounted,
+              showRiderBody: true
+            })
+        });
+        renderer.drawText(
+          toScreenX(rp.x),
+          toScreenY(rp.y, rZ + 52),
+          8.2 * gScale,
+          `[${rp.name || 'Ally'} Lv.${rp.lv || 1}]`,
+          0.42,
+          1.0,
+          0.78,
+          0.95,
+          true
+        );
+      }
+    }
+
     // 10. Ultra-Detailed High-Res Monsters (8 Distinct Types + Elites) & ALL 8 Formidable Bosses!
     const mobGrid = scaledSprite(72, 54, 2.32);
     for (const e of this.enemies) {
@@ -3576,17 +3668,78 @@ export class WorldEngine {
       renderer.drawText(toScreenX(ft.x), toScreenY(ft.y), ft.size * (cam.zoom / 1.38), ft.text, ft.r, ft.g, ft.b, a, true);
     }
 
-    // 13. Atmospheric Rainstorm Streaks & Expanding Puddle Splash Circles (Download(2).mp4 & Download(6).mp4!)
+    // 13. Multi-Layer Rainstorm / Crimson Ash-Tempest Streaks, Wind Mist & Forked Lightning!
     if (this.rainEnabled) {
+      const isAsh = this.weatherMode === 'ashstorm';
+      const zMul = cam.zoom / 1.38;
       for (const rd of this.rainDrops) {
         const sx = cam.vw * 0.5 + rd.ox * cam.zoom;
         const sy = cam.vh * 0.5 + rd.oy * cam.zoom;
         if (rd.splashing) {
-          const spA = 1 - rd.splashAge / 0.32;
-          const glyph = rd.splashAge < 0.14 ? 'o' : '(o)';
-          renderer.drawText(sx, sy, 8.5 * gScale * 0.7, glyph, 0.72, 0.88, 1.0, spA * 0.68, false);
+          const spA = 1 - rd.splashAge / 0.34;
+          const glyph = isAsh ? (rd.splashAge < 0.16 ? '✦' : '*') : rd.splashAge < 0.14 ? 'o' : '(o)';
+          renderer.drawText(
+            sx,
+            sy,
+            (isAsh ? 9.5 : 8.5) * gScale * 0.72,
+            glyph,
+            isAsh ? 1.0 : 0.72,
+            isAsh ? 0.45 : 0.88,
+            isAsh ? 0.16 : 1.0,
+            spA * 0.72,
+            isAsh
+          );
         } else {
-          renderer.drawGlyph(sx, sy, 10.5 * (cam.zoom / 1.38), '/', 0.72, 0.86, 1.0, 0.42 + this.lightningFlash * 0.3, false);
+          const lScale = rd.layer === 2 ? 1.28 : rd.layer === 1 ? 1.0 : 0.76;
+          const chR = isAsh ? (rd.layer === 2 ? '✦' : '*') : rd.layer === 2 ? '╱' : '/';
+          renderer.drawGlyph(
+            sx,
+            sy,
+            (isAsh ? 8.2 : 11.2) * lScale * zMul,
+            chR,
+            isAsh ? 1.0 : 0.72 + this.lightningFlash * 0.28,
+            isAsh ? 0.38 + rd.layer * 0.14 : 0.86 + this.lightningFlash * 0.14,
+            isAsh ? 0.16 : 1.0,
+            (0.28 + rd.layer * 0.14 + this.lightningFlash * 0.25),
+            isAsh && rd.layer === 2
+          );
+        }
+      }
+
+      // Sweeping Wind Mist Ribbons across ground
+      for (let m = 0; m < 18; m++) {
+        const mx = ((m * 190 - elapsed * (isAsh ? 210 : 280)) % (cam.vw + 240));
+        const sx = mx < -120 ? mx + cam.vw + 240 : mx;
+        const sy = ((m * 97 + elapsed * 45) % cam.vh);
+        renderer.drawText(
+          sx,
+          sy,
+          10.5 * zMul,
+          isAsh ? '~*·' : '≈~·',
+          isAsh ? 0.92 : 0.64,
+          isAsh ? 0.36 : 0.82,
+          isAsh ? 0.18 : 0.96,
+          0.22 + this.lightningFlash * 0.24,
+          false
+        );
+      }
+
+      // Jagged Forked Sky Lightning Bolts
+      for (const bolt of this.lightningBolts) {
+        const bA = 1 - bolt.age / bolt.life;
+        const cr = bolt.crimson ? 1.0 : 0.78;
+        const cg = bolt.crimson ? 0.44 : 0.95;
+        const cb = bolt.crimson ? 0.22 : 1.0;
+        for (const seg of bolt.pts) {
+          const steps = seg.isFork ? 4 : 6;
+          for (let st = 0; st <= steps; st++) {
+            const t = st / steps;
+            const sx = cam.vw * 0.5 + lerp(seg.x1, seg.x2, t) * cam.zoom;
+            const sy = cam.vh * 0.5 + lerp(seg.y1, seg.y2, t) * cam.zoom;
+            const dx = seg.x2 - seg.x1;
+            const chB = st === steps && !seg.isFork ? '✦' : Math.abs(dx) < 8 ? '|' : dx > 0 ? '\\' : '/';
+            renderer.drawGlyph(sx, sy, (seg.isFork ? 10 : 14) * zMul, chB, cr, cg, cb, bA * (seg.isFork ? 0.72 : 0.98), true);
+          }
         }
       }
     }
@@ -3804,9 +3957,20 @@ export class WorldEngine {
   }
 
   _emitDistantHorizonVista(renderer, cam, minX, maxX, minY, toScreenX, gScale, elapsed) {
-    // True 3D Twilight Forest Horizon + Multi-Tower Raytraced Citadel + Luminous Blooming Cloud Wisps!
     const skyY = clamp(cam.vh * 0.16, 48, 175);
     const parScale = clamp(cam.zoom / 1.38, 0.45, 1.35);
+
+    // 0. Twinkling Midnight Starlight Band along upper sky
+    const starCols = Math.ceil(cam.vw / 52);
+    for (let s = 0; s < starCols; s++) {
+      const hS = hashInt(s * 31, 913);
+      if (hS < 0.38) continue;
+      const sx = ((s + hS * 0.8) / starCols) * cam.vw;
+      const sy = 10 + hashInt(s, 419) * (skyY * 0.72);
+      const twink = 0.35 + 0.65 * Math.abs(Math.sin(elapsed * (1.2 + hS * 2.5) + s * 1.9));
+      const chS = hS > 0.86 ? '✦' : hS > 0.64 ? '*' : '·';
+      renderer.drawGlyph(sx, sy, (chS === '✦' ? 6.2 : 4.6) * parScale, chS, 0.68, 0.84, 1.0, twink * 0.62, chS === '✦');
+    }
 
     // 1. Atmospheric Distant Twilight Woodland Tree-Crown Band along upper skyline
     const forestCols = Math.ceil(cam.vw / 22);
