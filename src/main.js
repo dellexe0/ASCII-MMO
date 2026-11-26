@@ -617,7 +617,6 @@ function loop(now) {
   const autoBoost = autoZoom && cam.zoom > 1.38 ? lerp(1.0, 1.3, clamp((cam.zoom - 1.38) / (3.0 - 1.38), 0, 1)) : 1.0;
   const zoomOutScale = cam.zoom < 1.0 ? lerp(1.22, 1.0, clamp((cam.zoom - 0.52) / 0.48, 0, 1)) : 1.0;
   cam.glyphScale = clamp((baseSize / 4.0) * autoBoost * zoomOutScale, 0.72, 1.35);
-  sizeValueEl.textContent = `${Math.round(baseSize * autoBoost)}px`;
 
   // 100% Pure ASCII Render over #000000!
   engine.render(ascii, cam, elapsed);
