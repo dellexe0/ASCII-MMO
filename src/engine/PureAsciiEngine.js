@@ -7,7 +7,7 @@
  */
 
 const RAW_CHARSET =
-  " .,:;-~∼=+*#%@&^v·•°×≈≡░▒▓╬╔╗╚╝║═╱╲▲▼◄►◆◇◈◊○●†‡§¤✦✝/\\|_<>()[]{}!'\"`?123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz08$";
+  " .,:;-~∼=+*#%@&^v·•°×≈≡░▒▓╬╔╗╚╝║═╱╲▲▼◄►◆◇◈◊○●†‡§¤✦✝τ¥ψ♣♠/\\|_<>()[]{}!'\"`?123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz08$";
 export const CHARSET = Array.from(new Set(RAW_CHARSET)).join('');
 
 export const DENSITY_RAMP = ' ·,:;-~=+*#%@◆';

@@ -48,8 +48,8 @@ function hashInt(ix, iy) {
   return ((n ^ (n >>> 16)) >>> 0) / 4294967295;
 }
 
-const GRASS_BLADES = ['/', '\\', '|', "'", ',', '.', '^', ';'];
-const WATER_RIPPLES = '~-_=.:';
+const GRASS_BLADES = ['/', '\\', '|', "'", ',', '.', '^', ';', 'v', 'τ', '¥'];
+const WATER_RIPPLES = '~-_=.:≈';
 const MOON_CHARS = '@#%*=+~-:.';
 const CLOUD_CHARS = '.:,;+*~';
 
@@ -182,14 +182,14 @@ export class WorldEngine {
     this.enemies = this._buildEnemies();
     this.adventurers = this._buildMMOAdventurers();
 
-    // Static Grass, Relief Height & Water Terrain Lookup Caches (4400x4400 world!)
-    this._gHalf = 440;
-    this._gDim = 881;
+    // Static Grass, Relief Height & Water Terrain Lookup Caches (8800x8800 vast world!)
+    this._gHalf = 880;
+    this._gDim = 1761;
     this._grassState = new Uint8Array(this._gDim * this._gDim);
     this._grassZ = new Float32Array(this._gDim * this._gDim);
     this._grassSlope = new Int8Array(this._gDim * this._gDim);
-    this._wHalf = 192;
-    this._wDim = 385;
+    this._wHalf = 390;
+    this._wDim = 781;
     this._waterState = new Uint8Array(this._wDim * this._wDim);
     this._waterFlowVx = new Float32Array(this._wDim * this._wDim);
     this._waterFlowVy = new Float32Array(this._wDim * this._wDim);
@@ -316,11 +316,11 @@ export class WorldEngine {
     for (let i = 0; i < count; i++) {
       const inAutumn = i < 55;
       const wx = inAutumn
-        ? this.worldMap.mirrorLakeX + (this.rng() - 0.5) * 440
-        : (this.rng() - 0.5) * 2200;
+        ? this.worldMap.mirrorLakeX + (this.rng() - 0.5) * 520
+        : (this.rng() - 0.5) * 7200;
       const wy = inAutumn
-        ? this.worldMap.mirrorLakeY + (this.rng() - 0.5) * 340
-        : (this.rng() - 0.5) * 2200;
+        ? this.worldMap.mirrorLakeY + (this.rng() - 0.5) * 420
+        : (this.rng() - 0.5) * 7200;
       motes.push({
         x: wx,
         y: wy,
@@ -335,53 +335,71 @@ export class WorldEngine {
   }
 
   _populateTreesAndRocks() {
-    // Frame Waterfall Clearing & Forest Clearing Canopy Arches (matches Screenshot 1!)
     const sx = this.worldMap.spawnPos.x;
     const sy = this.worldMap.spawnPos.y;
-    this.trees.push({ x: sx - 165, y: sy + 10, kind: 'clearing_oak', scale: 1.25 });
-    this.trees.push({ x: sx + 160, y: sy + 16, kind: 'clearing_oak', scale: 1.2 });
-    this.trees.push({ x: sx - 125, y: sy - 115, kind: 'pine', scale: 1.1 });
-    this.trees.push({ x: sx + 125, y: sy - 110, kind: 'pine', scale: 1.1 });
+    const isClearOfPoi = (x, y) => {
+      if (Math.hypot(x - sx, y - sy) < 115) return false;
+      if (Math.hypot(x - this.worldMap.bridgePos.x, y - this.worldMap.bridgePos.y) < 120) return false;
+      if (this.worldMap.bridgeNorthPos && Math.hypot(x - this.worldMap.bridgeNorthPos.x, y - this.worldMap.bridgeNorthPos.y) < 120) return false;
+      if (Math.hypot(x - this.worldMap.towerPos.x, y - this.worldMap.towerPos.y) < 125) return false;
+      if (Math.hypot(x - this.worldMap.fortressGatePos.x, y - this.worldMap.fortressGatePos.y) < 130) return false;
+      if (Math.hypot(x - this.worldMap.mirrorLakeX, y - (this.worldMap.mirrorLakeY + 15)) < 195) return false;
+      if (Math.hypot(x - this.worldMap.wyrmPeakPos.x, y - this.worldMap.wyrmPeakPos.y) < 185) return false;
+      if (Math.hypot(x - this.worldMap.citadelPos.x, y - this.worldMap.citadelPos.y) < 220) return false;
+      if (Math.hypot(x - this.worldMap.obeliskPos.x, y - this.worldMap.obeliskPos.y) < 195) return false;
+      if (Math.hypot(x - this.worldMap.cryptPos.x, y - this.worldMap.cryptPos.y) < 175) return false;
+      if (Math.hypot(x - this.worldMap.highGroundPos.x, y - this.worldMap.highGroundPos.y) < 175) return false;
+      if (Math.hypot(x - this.worldMap.spiderHollowPos.x, y - this.worldMap.spiderHollowPos.y) < 160) return false;
+      if (Math.hypot(x - this.worldMap.bastionPos.x, y - this.worldMap.bastionPos.y) < 165) return false;
+      return true;
+    };
 
-    // Dense Forest Trees across Darkwood, Glade, Bastion edges, Crypt, Horizon Ridges & Autumn Pines
-    for (let i = 0; i < 3600 && this.trees.length < 185; i++) {
-      const x = (this.rng() - 0.5) * 3800;
-      const y = (this.rng() - 0.5) * 3800;
+    // Frame Starting Sanctuary Island Glade with spaced, crisp Willow & Pine trees
+    const starterCandidates = [
+      { x: sx - 175, y: sy - 10, kind: 'willow', scale: 1.15 },
+      { x: sx + 170, y: sy + 18, kind: 'clearing_oak', scale: 1.1 },
+      { x: sx - 135, y: sy - 135, kind: 'pine', scale: 1.08 },
+      { x: sx + 140, y: sy - 125, kind: 'pine', scale: 1.05 }
+    ];
+    for (const st of starterCandidates) {
+      if (!this.worldMap.isWater(st.x, st.y) && this.worldMap.getRoadFactor(st.x, st.y) < 0.35) {
+        this.trees.push(st);
+        this.colliders.push({ x: st.x, y: st.y, r: 14 });
+      }
+    }
+
+    // Archipelago Forest Groves with wide 115u spacing across vast 8800x8800 world
+    for (let i = 0; i < 8200 && this.trees.length < 340; i++) {
+      const x = (this.rng() - 0.5) * 7800;
+      const y = (this.rng() - 0.5) * 7800;
       const elev = this.worldMap.getElevation(x, y);
       if (elev < 0.08 || elev > 0.45) continue;
-      if (this.worldMap.getRoadFactor(x, y) > 0.28) continue;
+      if (this.worldMap.getRoadFactor(x, y) > 0.25) continue;
       if (this.worldMap.isOnBridge(x, y)) continue;
-      if (Math.hypot(x - sx, y - sy) < 120) continue;
-      if (Math.hypot(x - this.worldMap.bridgePos.x, y - this.worldMap.bridgePos.y) < 115) continue;
-      if (Math.hypot(x - this.worldMap.mirrorLakeX, y - (this.worldMap.mirrorLakeY + 15)) < 190) continue;
-      if (Math.hypot(x - this.worldMap.wyrmPeakPos.x, y - this.worldMap.wyrmPeakPos.y) < 185) continue;
-      if (Math.hypot(x - this.worldMap.citadelPos.x, y - this.worldMap.citadelPos.y) < 220) continue;
-      if (Math.hypot(x - this.worldMap.obeliskPos.x, y - this.worldMap.obeliskPos.y) < 195) continue;
-      if (Math.hypot(x - this.worldMap.cryptPos.x, y - this.worldMap.cryptPos.y) < 175) continue;
-      if (Math.hypot(x - this.worldMap.highGroundPos.x, y - this.worldMap.highGroundPos.y) < 175) continue;
-      if (Math.hypot(x - this.worldMap.spiderHollowPos.x, y - this.worldMap.spiderHollowPos.y) < 155) continue;
-      if (Math.hypot(x - this.worldMap.bastionPos.x, y - this.worldMap.bastionPos.y) < 160) continue;
-      if (this.trees.some((t) => Math.hypot(t.x - x, t.y - y) < 84)) continue;
+      if (!isClearOfPoi(x, y)) continue;
+      if (this.trees.some((t) => Math.hypot(t.x - x, t.y - y) < 110)) continue;
 
       const biome = this.worldMap.getBiomeId(x, y);
       const kind =
         biome === 'crimson_crag' || biome === 'obelisk_sanctum'
-          ? 'autumn'
+          ? (this.rng() > 0.3 ? 'autumn' : 'pine')
           : biome === 'ashen_peak' || biome === 'pale_citadel'
             ? 'dead'
             : biome === 'sunken_crypt'
               ? (this.rng() > 0.45 ? 'dead' : 'autumn')
-              : this.rng() > 0.52
-                ? 'pine'
-                : 'clearing_oak';
-      this.trees.push({ x, y, kind, scale: 0.9 + this.rng() * 0.55 });
-      if (kind !== 'dead') this.colliders.push({ x, y, r: 16 });
+              : biome === 'darkwood' || biome === 'mire_harbor'
+                ? (this.rng() > 0.4 ? 'willow' : 'pine')
+                : this.rng() > 0.52
+                  ? 'pine'
+                  : 'clearing_oak';
+      this.trees.push({ x, y, kind, scale: 0.88 + this.rng() * 0.42 });
+      if (kind !== 'dead') this.colliders.push({ x, y, r: 15 });
     }
 
-    // Scattered Shoreline & Field Boulders
-    for (let i = 0; i < 850 && this.boulders.length < 34; i++) {
-      const x = (this.rng() - 0.5) * 3700;
-      const y = (this.rng() - 0.5) * 3700;
+    // Scattered Shoreline & Field Boulders across vast 8800x8800 world
+    for (let i = 0; i < 1800 && this.boulders.length < 68; i++) {
+      const x = (this.rng() - 0.5) * 7600;
+      const y = (this.rng() - 0.5) * 7600;
       const elev = this.worldMap.getElevation(x, y);
       if (elev < 0.06 || elev > 0.42) continue;
       if (this.worldMap.getRoadFactor(x, y) > 0.32) continue;
@@ -660,9 +678,9 @@ export class WorldEngine {
     for (let i = 0; i < anchors.length; i++) {
       pushMobAt(anchors[i][0], anchors[i][1], i % 3 === 0);
     }
-    for (let attempts = 0; attempts < 900 && list.length < 72; attempts++) {
-      const mx = (this.rng() - 0.5) * 3550;
-      const my = (this.rng() - 0.5) * 3550;
+    for (let attempts = 0; attempts < 2200 && list.length < 140; attempts++) {
+      const mx = (this.rng() - 0.5) * 7500;
+      const my = (this.rng() - 0.5) * 7500;
       pushMobAt(mx, my, false);
     }
 
@@ -2441,10 +2459,10 @@ export class WorldEngine {
     this._emitReflectedMoonAndClouds(renderer, minX, maxX, minY, maxY, toScreenX, toScreenY, gScale, elapsed, cam.zoom);
 
     const wStep = 11.5;
-    const wx0 = Math.floor(Math.max(-2180, minX) / wStep);
-    const wx1 = Math.ceil(Math.min(2180, maxX) / wStep);
-    const wy0 = Math.floor(Math.max(-2180, minY) / wStep);
-    const wy1 = Math.ceil(Math.min(2180, maxY) / wStep);
+    const wx0 = Math.floor(Math.max(-4380, minX) / wStep);
+    const wx1 = Math.ceil(Math.min(4380, maxX) / wStep);
+    const wy0 = Math.floor(Math.max(-4380, minY) / wStep);
+    const wy1 = Math.ceil(Math.min(4380, maxY) / wStep);
     const poolX = this.worldMap.plungePoolX;
     const poolY = this.worldMap.plungePoolY;
     const waterOddFade = clamp((cam.zoom - 0.72) / 0.36, 0, 1);
@@ -2474,7 +2492,7 @@ export class WorldEngine {
           }
           ws = elev > -0.075 ? 3 : 2;
           this._waterState[wIdx] = ws;
-          if (wy > -75 && wy < 440) {
+          if (Math.abs(wx - this.worldMap.getRiverCenterX(wy)) < 68) {
             const flow = this.worldMap.getRiverFlow(wx, wy);
             this._waterFlowVx[wIdx] = flow.vx;
             this._waterFlowVy[wIdx] = flow.vy;
@@ -2490,20 +2508,21 @@ export class WorldEngine {
         const wave = hasFlow ? this._waterFlowVx[wIdx] * flowShift : Math.sin(elapsed * 2.4 + wy * 0.11 + wx * 0.025) * 2.6;
         const waveY = hasFlow ? fvy * flowShift : 0;
         const ch = isShore
-          ? (h2 > 0.5 ? '~' : '_')
-          : hasFlow && h2 > 0.62
-            ? '='
+          ? (h2 > 0.62 ? '≈' : h2 > 0.3 ? '~' : '_')
+          : hasFlow && h2 > 0.64
+            ? (h1 > 0.25 ? '≈' : '=')
             : WATER_RIPPLES[Math.floor(h2 * WATER_RIPPLES.length) % WATER_RIPPLES.length];
         const dl = Math.hypot(wx - lp.x, wy - lp.y);
         const warm = Math.max(0, 1.0 - dl / 155);
         const dPool = Math.hypot(wx - poolX, wy - poolY);
         const poolBright = dPool < 165 ? (1 - dPool / 165) * 0.32 : hasFlow && h2 > 0.62 ? 0.25 : 0;
         const lodFade = isOdd ? waterOddFade : 1.0;
+        const wSizeVar = ch === '·' || ch === '.' || ch === ':' ? 0.72 : ch === '≈' || ch === '~' ? 1.24 : 0.98;
 
         renderer.drawGlyph(
           toScreenX(wx + wave),
           toScreenY(wy + waveY),
-          (isShore ? 6.8 : 5.6 + h2 * 2.2) * gScale * (isOdd ? 1.0 : waterSizeBoost),
+          (isShore ? 6.8 : 5.4 + h2 * 2.4) * wSizeVar * gScale * (isOdd ? 1.0 : waterSizeBoost),
           ch,
           (isShore ? 0.36 : 0.16) + warm * 0.48 + poolBright * 0.48,
           (isShore ? 0.56 : 0.32) + warm * 0.32 + poolBright * 0.5,
@@ -2574,7 +2593,7 @@ export class WorldEngine {
       if (t.x < minX - 80 || t.x > maxX + 80 || t.y < minY - 80 || t.y > maxY + 90) continue;
       if (!this.worldMap.isWater(t.x, t.y + 34) && !this.worldMap.isWater(t.x, t.y + 18)) continue;
       const sc = t.scale || 1.0;
-      const g = scaledProp(22, 26, 4.4);
+      const g = scaledProp(32, 36, 2.55);
       emitPureAscii3DProp({
         renderer,
         toScreenX,
@@ -2584,8 +2603,8 @@ export class WorldEngine {
         worldTiltY: WORLD_TILT_Y,
         cols: g.cols,
         rows: g.rows,
-        worldSpanX: 92 * sc,
-        worldSpanY: 112 * sc,
+        worldSpanX: 84 * sc,
+        worldSpanY: 96 * sc,
         cellScreenSize: g.cellScreenSize,
         alphaMult: 0.48,
         isReflection: true,
@@ -2720,10 +2739,10 @@ export class WorldEngine {
 
     // 3. TOPOGRAPHIC 3D RELIEF, CLIFF STRATA & LUSH CLUMPED GRASS TUFTS!
     const gStep = 5.0;
-    const gx0 = Math.floor(Math.max(-2180, minX) / gStep);
-    const gx1 = Math.ceil(Math.min(2180, maxX) / gStep);
-    const gy0 = Math.floor(Math.max(-2180, minY) / gStep);
-    const gy1 = Math.ceil(Math.min(2180, maxY) / gStep);
+    const gx0 = Math.floor(Math.max(-4380, minX) / gStep);
+    const gx1 = Math.ceil(Math.min(4380, maxX) / gStep);
+    const gy0 = Math.floor(Math.max(-4380, minY) / gStep);
+    const gy1 = Math.ceil(Math.min(4380, maxY) / gStep);
     const grassOddFade = clamp((cam.zoom - 1.02) / 0.36, 0, 1);
     const grassQuartFade = clamp((cam.zoom - 0.56) / 0.38, 0.28, 1.0);
     const grassSizeBoost = lerp(1.52, 1.0, grassOddFade * 0.72 + grassQuartFade * 0.28);
@@ -2798,29 +2817,31 @@ export class WorldEngine {
         const wz = this._grassZ[gIdx];
         const slope = this._grassSlope[gIdx];
 
-        // Steep Topographic Cliff Faces & Smooth Crag Strata (clean structural rock glyphs)
+        // Steep Topographic Cliff Faces & Smooth Crag Strata (multi-size varied rock glyphs)
         if (gs === 6) {
-          if (h1 < 0.72) {
+          if (h1 < 0.74) {
             computeShadowAndWarmth(wx, wy);
             const hillSh = clamp(1.0 + slope * 0.025, 0.7, 1.28);
-            const chC = h3 > 0.68 ? '^' : h3 > 0.4 ? '=' : h2 > 0.45 ? '~' : ':';
-            const rC = (0.36 + h2 * 0.24 + _outWarm * 0.36) * hillSh * _outShadow;
-            const gC = (0.4 + h2 * 0.24 + _outWarm * 0.22) * hillSh * _outShadow;
-            const bC = (0.5 + h3 * 0.24 - _outWarm * 0.06) * hillSh * _outShadow;
-            renderer.drawGlyph(toScreenX(wx), toScreenY(wy, wz), (6.0 + h3 * 1.4) * gScale * grassSizeBoost, chC, clamp(rC, 0, 1), clamp(gC, 0, 1), clamp(bC, 0, 1), 0.78 * lodFade, false);
+            const chC = h3 > 0.74 ? '^' : h3 > 0.48 ? '▓' : h3 > 0.28 ? '=' : h2 > 0.45 ? '~' : ':';
+            const cSize = chC === '▓' || chC === '^' ? 1.14 : chC === ':' ? 0.78 : 0.98;
+            const rC = (0.40 + h2 * 0.24 + _outWarm * 0.36) * hillSh * _outShadow;
+            const gC = (0.44 + h2 * 0.24 + _outWarm * 0.22) * hillSh * _outShadow;
+            const bC = (0.54 + h3 * 0.24 - _outWarm * 0.06) * hillSh * _outShadow;
+            renderer.drawGlyph(toScreenX(wx), toScreenY(wy, wz), (5.8 + h3 * 1.6) * cSize * gScale * grassSizeBoost, chC, clamp(rC, 0, 1), clamp(gC, 0, 1), clamp(bC, 0, 1), 0.80 * lodFade, false);
           }
           continue;
         }
 
-        // Scenic Worn Cobblestone Flagstones following Smooth Hill Contours
+        // Scenic Worn Cobblestone Flagstones following Smooth Hill Contours (NEVER over water!)
         if (gs === 2) {
-          if (h1 < 0.48) {
+          if (h1 < 0.50 && !this.worldMap.isWater(wx, wy)) {
             computeShadowAndWarmth(wx, wy);
-            const stCh = h3 > 0.68 ? '=' : h3 > 0.38 ? '-' : ':';
-            const rS = (0.42 + h2 * 0.16 + _outWarm * 0.42) * _outShadow;
-            const gS = (0.41 + h2 * 0.16 + _outWarm * 0.26) * _outShadow;
-            const bS = (0.38 + h3 * 0.14 - _outWarm * 0.08) * _outShadow;
-            renderer.drawGlyph(toScreenX(wx), toScreenY(wy, wz), (5.4 + h3 * 1.2) * gScale * grassSizeBoost, stCh, rS, gS, bS, (0.58 + _outWarm * 0.22) * lodFade, false);
+            const stCh = h3 > 0.72 ? '=' : h3 > 0.38 ? '-' : h2 > 0.5 ? ':' : '·';
+            const stSize = stCh === '·' || stCh === ':' ? 0.74 : 0.96;
+            const rS = (0.44 + h2 * 0.16 + _outWarm * 0.42) * _outShadow;
+            const gS = (0.43 + h2 * 0.16 + _outWarm * 0.26) * _outShadow;
+            const bS = (0.40 + h3 * 0.14 - _outWarm * 0.08) * _outShadow;
+            renderer.drawGlyph(toScreenX(wx), toScreenY(wy, wz), (5.2 + h3 * 1.3) * stSize * gScale * grassSizeBoost, stCh, rS, gS, bS, (0.58 + _outWarm * 0.22) * lodFade, false);
           }
           continue;
         }
@@ -2832,9 +2853,8 @@ export class WorldEngine {
         if (clumpVal < -0.34 && h1 > 0.28) continue;
 
         computeShadowAndWarmth(wx, wy);
-        const shadow = _outShadow * clamp(1.0 + slope * 0.028, 0.68, 1.2);
+        const shadow = Math.max(0.36, _outShadow * clamp(1.0 + slope * 0.028, 0.68, 1.2));
         const warm = _outWarm;
-        if (shadow < 0.2 && h3 > 0.56) continue;
 
         const isCrimson = gs === 4;
         const isAshen = gs === 5;
@@ -2851,7 +2871,7 @@ export class WorldEngine {
         let crushed = false;
         let revealFlower = false;
 
-        // Instant Physical Collision Parting around Hero, Horse, Adventurers & Bosses (with fast AABB reject!)
+        // Physical Grass Bending under Hero, Horse, Adventurers & Bosses (never erases blades under feet!)
         for (let ci = 0; ci < grassCrushers.length; ci++) {
           const gc = grassCrushers[ci];
           const gdx = wx - gc.x;
@@ -2863,11 +2883,11 @@ export class WorldEngine {
             const p = 1 - gd / gc.r;
             const nx = gdx / Math.max(1, gd);
             const ny = gdy / Math.max(1, gd);
-            const push = p * 12.0;
+            const push = p * 4.2;
             swayX += nx * push;
-            swayY += ny * push * 0.65;
-            bendMag += p;
-            if (p > 0.38) crushed = true;
+            swayY += ny * push * 0.45;
+            bendMag += p * 1.15;
+            if (p > 0.32) crushed = true;
             if (p > 0.2 && h3 > 0.84) revealFlower = true;
           }
         }
@@ -2896,12 +2916,12 @@ export class WorldEngine {
         }
 
         const isTallBlade = h2 > 0.22;
-        const naturalFlower = isTallBlade && h3 > 0.968 && !isAshen;
+        const naturalFlower = isTallBlade && h3 > 0.962 && !isAshen;
         let ch;
         if (revealFlower || naturalFlower) {
-          ch = h2 > 0.55 ? '*' : '.';
-        } else if (crushed && bendMag > 0.55) {
-          ch = h3 > 0.5 ? '-' : '_';
+          ch = h2 > 0.72 ? '✦' : h2 > 0.45 ? '*' : 'o';
+        } else if (crushed) {
+          ch = swayX > 0.5 ? '/' : swayX < -0.5 ? '\\' : '~';
         } else if (!isTallBlade) {
           ch = h3 > 0.55 ? ',' : '.';
         } else if (swayX > 1.75) {
@@ -2941,20 +2961,21 @@ export class WorldEngine {
           cb = lerp(cb, 0.26, warm * 0.56);
         }
 
-        const mult = crushed ? shadow * 0.58 : shadow;
+        const mult = shadow;
         cr *= mult;
         cg *= mult;
         cb *= mult;
-        const alpha = clamp((isTallBlade ? 0.58 : 0.4) + h2 * 0.38 * shadow + warm * 0.25 + wakeSheen * 0.2, 0.22, 0.96) * lodFade;
-        const sizeWorld = ((revealFlower ? 3.8 : isTallBlade ? 4.9 : 3.7) + h3 * 1.9) * (isOdd ? 1.0 : grassSizeBoost);
+        const alpha = clamp((isTallBlade ? 0.58 : 0.4) + h2 * 0.38 * shadow + warm * 0.25 + wakeSheen * 0.2, 0.26, 0.96) * lodFade;
+        const sizeHier = ch === '.' || ch === ',' || ch === "'" ? 0.74 : ch === '✦' || ch === '¥' || ch === 'τ' ? 1.24 : 1.0;
+        const sizeWorld = ((revealFlower ? 4.2 : isTallBlade ? 5.1 : 3.5) + h3 * 2.2) * sizeHier * (isOdd ? 1.0 : grassSizeBoost);
         const sxGrass = toScreenX(wx + swayX);
-        const syGrass = toScreenY(wy + swayY, wz);
+        const syGrass = toScreenY(wy + swayY, wz - (crushed ? 1.8 : 0));
 
         renderer.drawGlyph(sxGrass, syGrass, sizeWorld * gScale, ch, clamp(cr, 0, 1), clamp(cg, 0, 1), clamp(cb, 0, 1), alpha, false);
 
-        // Multi-Blade Lush Tuft Cluster inside rich meadow clumps!
-        if (clumpVal > 0.28 && cam.zoom >= 1.1 && !crushed && h2 > 0.36) {
-          const ch2 = swayX > 1.2 ? '/' : swayX < -1.2 ? '\\' : h3 > 0.55 ? "'" : '|';
+        // Multi-Blade Lush Tuft Cluster inside rich meadow clumps (bends sideways under feet instead of vanishing!)
+        if (clumpVal > 0.28 && cam.zoom >= 1.1 && h2 > 0.36) {
+          const ch2 = crushed ? (swayX >= 0 ? '/' : '\\') : swayX > 1.2 ? '/' : swayX < -1.2 ? '\\' : h3 > 0.55 ? "'" : '|';
           renderer.drawGlyph(
             toScreenX(wx + swayX * 1.22 + (h1 - 0.4) * 4.4),
             toScreenY(wy + swayY - 2.4, wz + 2.2),
@@ -2988,9 +3009,9 @@ export class WorldEngine {
 
     // 5. Semi-3D Stratified Cliff Boulders, Autumn Crimson Canyon Walls & Twin Waterfall
     const emitBoulder3DProp = (bx, by, rx, ry, hasMoss, isAutumn, cachePrefix) => {
-      const cols = clamp(Math.round(rx * 0.72), 18, 40);
-      const rows = clamp(Math.round(ry * 0.58), 12, 28);
-      const bCell = ((ry * 3.0) / rows) * 1.18;
+      const cols = clamp(Math.round(rx * 0.92), 22, 46);
+      const rows = clamp(Math.round(ry * 0.72), 16, 34);
+      const bCell = ((ry * 3.1) / rows) * 1.24;
       const g = scaledProp(cols, rows, bCell);
       const bz = this.worldMap.getTerrainZ(bx, by);
       emitPureAscii3DProp({
@@ -3009,6 +3030,7 @@ export class WorldEngine {
         alphaMult: 0.98,
         lanternPos: lp,
         elapsed,
+        enableMultiSize: true,
         cacheKey: `${cachePrefix}_${Math.round(bx)}_${Math.round(by)}_${lodTier}`,
         buildProp: (buf) => buildBoulder3D(buf, rx, ry, hasMoss, isAutumn)
       });
@@ -3032,10 +3054,15 @@ export class WorldEngine {
       }
     }
 
-    // 6. Semi-3D Ancient Woodland, Pine & Autumn Trees (Tight monospace aspect packing!)
-    const tGrid = scaledProp(34, 28, 4.4);
+    // 6. Crisp High-Resolution Sculpted Trees (Y-sorted back-to-front so trunks & crowns never clip awkwardly!)
+    const tGrid = scaledProp(44, 48, 2.65);
+    const visTrees = [];
     for (const t of this.trees) {
       if (t.x < minX - 95 || t.x > maxX + 95 || t.y < minY - 95 || t.y > maxY + 110) continue;
+      visTrees.push(t);
+    }
+    visTrees.sort((a, b) => a.y - b.y);
+    for (const t of visTrees) {
       const sc = t.scale || 1.0;
       const tz = this.worldMap.getTerrainZ(t.x, t.y);
       emitPureAscii3DProp({
@@ -3048,12 +3075,13 @@ export class WorldEngine {
         worldTiltY: WORLD_TILT_Y,
         cols: tGrid.cols,
         rows: tGrid.rows,
-        worldSpanX: 96 * sc,
-        worldSpanY: 124 * sc,
+        worldSpanX: 84 * sc,
+        worldSpanY: 96 * sc,
         cellScreenSize: tGrid.cellScreenSize,
         alphaMult: 0.96,
         lanternPos: lp,
         elapsed,
+        enableMultiSize: true,
         buildProp: (buf) => buildTree3D(buf, t, elapsed)
       });
     }
@@ -3191,8 +3219,8 @@ export class WorldEngine {
       });
     }
 
-    // 9. Living Semi-3D MMORPG Adventurers (Monospace-aspect packed ASCII!)
-    const advGrid = scaledSprite(52, 38, 2.75);
+    // 9. High-Detail MMORPG Adventurers (Multi-size ASCII)
+    const advGrid = scaledSprite(84, 62, 2.35);
     for (const a of this.adventurers) {
       if (a.x < minX - 70 || a.x > maxX + 70 || a.y < minY - 70 || a.y > maxY + 70) continue;
       const aZ = this.worldMap.getWalkZ ? this.worldMap.getWalkZ(a.x, a.y) : 0;
@@ -3206,19 +3234,20 @@ export class WorldEngine {
         worldTiltY: WORLD_TILT_Y,
         cols: advGrid.cols,
         rows: advGrid.rows,
-        worldSpan: 92,
+        worldSpan: 86,
         cellScreenSize: advGrid.cellScreenSize,
         alphaMult: 0.99,
         rimColor: [0.68, 0.92, 1.0],
         lanternPos: lp,
         elapsed,
+        enableMultiSize: true,
         buildModel: (buf) => buildAdventurer3D(buf, a, elapsed)
       });
       renderer.drawText(toScreenX(a.x), toScreenY(a.y, aZ + 48), 7.5 * gScale, `<${a.name} L${a.lv}>`, 0.45, 0.88, 1.0, 0.84, false);
     }
 
-    // 10. Ultra-Detailed Semi-3D Monsters (8 Distinct Types + Elites) & ALL 8 Formidable Bosses!
-    const mobGrid = scaledSprite(46, 34, 1.72);
+    // 10. Ultra-Detailed High-Res Monsters (8 Distinct Types + Elites) & ALL 8 Formidable Bosses!
+    const mobGrid = scaledSprite(72, 54, 2.32);
     for (const e of this.enemies) {
       if (!e.alive || e.x < minX - 130 || e.x > maxX + 130 || e.y < minY - 130 || e.y > maxY + 130) continue;
       const ez = this.worldMap.getWalkZ ? this.worldMap.getWalkZ(e.x, e.y) : 0;
@@ -3280,12 +3309,13 @@ export class WorldEngine {
           worldTiltY: WORLD_TILT_Y,
           cols: mobGrid.cols,
           rows: mobGrid.rows,
-          worldSpan: e.isElite ? 56 : 50,
-          cellScreenSize: mobGrid.cellScreenSize * (e.isElite ? 1.12 : 1.0),
+          worldSpan: e.isElite ? 52 : 44,
+          cellScreenSize: mobGrid.cellScreenSize * (e.isElite ? 1.16 : 1.0),
           alphaMult: 0.99,
           rimColor: mobRim,
           lanternPos: lp,
           elapsed,
+          enableMultiSize: true,
           buildModel: (buf) => buildBaseMob3D(buf, e, elapsed)
         });
       } else {
@@ -3330,7 +3360,7 @@ export class WorldEngine {
     const activeMat = this.build.computed.armorMaterial;
     const heroZ = this.z || 0;
     const horseZ = this.isMounted ? heroZ : (this.worldMap.getWalkZ ? this.worldMap.getWalkZ(this.horseX, this.horseY) : heroZ);
-    const mountGrid = scaledSprite(68, 50, 2.26);
+    const mountGrid = scaledSprite(96, 72, 2.55);
     emitPureAscii3DSprite({
       renderer,
       toScreenX,
@@ -3341,7 +3371,7 @@ export class WorldEngine {
       worldTiltY: WORLD_TILT_Y,
       cols: mountGrid.cols,
       rows: mountGrid.rows,
-      worldSpan: 96,
+      worldSpan: 86,
       cellScreenSize: mountGrid.cellScreenSize,
       alphaMult: 0.99,
       rimColor: this.playerBleedTimer > 0 ? [1.0, 0.25, 0.28] : this.guardShield > 0 ? [0.45, 0.88, 1.0] : activeMat?.halo ? [1.0, 0.68, 0.28] : [1.0, 0.84, 0.48],
@@ -3367,7 +3397,7 @@ export class WorldEngine {
     });
 
     if (!this.isMounted) {
-      const footGrid = scaledSprite(52, 38, 2.08);
+      const footGrid = scaledSprite(76, 58, 2.45);
       emitPureAscii3DSprite({
         renderer,
         toScreenX,
@@ -3378,7 +3408,7 @@ export class WorldEngine {
         worldTiltY: WORLD_TILT_Y,
         cols: footGrid.cols,
         rows: footGrid.rows,
-        worldSpan: 68,
+        worldSpan: 60,
         cellScreenSize: footGrid.cellScreenSize,
         alphaMult: 0.99,
         rimColor: this.playerBleedTimer > 0 ? [1.0, 0.25, 0.28] : this.guardShield > 0 ? [0.45, 0.88, 1.0] : activeMat?.halo ? [1.0, 0.68, 0.28] : [1.0, 0.84, 0.48],
@@ -3804,54 +3834,7 @@ export class WorldEngine {
       }
     }
 
-    // 2. True 3D Raytraced Distant Castles & Horizon Spires (ZERO ugly 2D pyramids!)
-    const spires = [
-      { pos: this.worldMap.citadelPos, kind: 'citadel', spanX: 215, spanY: 185, cols: 64, rows: 42 },
-      { pos: this.worldMap.obeliskPos, kind: 'obelisk', spanX: 90, spanY: 135, cols: 30, rows: 32 },
-      { pos: this.worldMap.elderwoodPos, kind: 'elderwood', spanX: 95, spanY: 135, cols: 32, rows: 32 }
-    ];
-    for (let si = 0; si < spires.length; si++) {
-      const sp = spires[si];
-      const dy = sp.pos.y - cam.y;
-      if (dy > -340) continue;
-      const dist = Math.hypot(sp.pos.x - cam.x, dy);
-      if (dist < 560) continue;
-
-      const sxHorizon = (sp.pos.x - cam.x) * (cam.zoom * 0.58) + cam.vw * 0.5;
-      if (sxHorizon < -260 || sxHorizon > cam.vw + 260) continue;
-
-      const fade = clamp((dist - 560) / 360, 0, 1);
-      const scaleH = parScale * (sp.kind === 'citadel' ? 0.68 : 0.62);
-      const anchorSy = skyY + 26;
-      const toHorizX = (wx) => sxHorizon + (wx - sp.pos.x) * scaleH;
-      const toHorizY = (wy, wz = 0) => anchorSy + ((wy - sp.pos.y) * WORLD_TILT_Y - wz * LIFT_Z) * scaleH;
-
-      emitPureAscii3DProp({
-        renderer,
-        toScreenX: toHorizX,
-        toScreenY: toHorizY,
-        worldX: sp.pos.x,
-        worldY: sp.pos.y,
-        worldZ: 0,
-        worldTiltY: WORLD_TILT_Y,
-        cols: sp.cols,
-        rows: sp.rows,
-        worldSpanX: sp.spanX,
-        worldSpanY: sp.spanY,
-        cellScreenSize: (sp.spanY / sp.rows) * scaleH * 1.18,
-        alphaMult: 0.78 * fade,
-        rimColor: [0.68, 0.82, 0.98],
-        fogColor: [0.34, 0.45, 0.58],
-        fogAmt: 0.44,
-        elapsed,
-        buildProp: (buf) =>
-          sp.kind === 'citadel'
-            ? buildCitadelHorizon3D(buf, elapsed)
-            : buildHorizonVistaTower3D(buf, sp.kind, elapsed)
-      });
-    }
-
-    // 3. Drifting Volumetric Luminous Twilight Cloud Banks (Bloom-lit over Valley & Castles!)
+    // 2. Drifting Volumetric Luminous Twilight Cloud Banks (Bloom-lit over Valley!)
     for (let cIdx = 0; cIdx < 5; cIdx++) {
       const cwSpeed = 8.5 + (cIdx % 3) * 3.5;
       const rawCx = ((cIdx * 430 + elapsed * cwSpeed - cam.x * 0.14) % (cam.vw + 520));
@@ -4040,29 +4023,33 @@ export class WorldEngine {
       }
     }
 
-    // 5. Ancient Arched Stone River Bridge & Sunken Crypt Courtyard Pillared Sanctum!
-    const br = this.worldMap.bridgePos;
-    if (br.x > minX - 100 && br.x < maxX + 100 && br.y > minY - 80 && br.y < maxY + 80) {
-      const brCols = Math.max(16, Math.round(34 * propLod));
-      const brRows = Math.max(10, Math.round(22 * propLod));
-      emitPureAscii3DProp({
-        renderer,
-        toScreenX,
-        toScreenY,
-        worldX: br.x,
-        worldY: br.y,
-        worldZ: 0,
-        worldTiltY: WORLD_TILT_Y,
-        cols: brCols,
-        rows: brRows,
-        worldSpanX: 104,
-        worldSpanY: 64,
-        cellScreenSize: 4.2 * (34 / brCols) * gScale,
-        lanternPos: lp,
-        elapsed,
-        cacheKey: `bridge_${lodTier}`,
-        buildProp: (buf) => buildBridge3D(buf)
-      });
+    // 5. Ancient Arched Sea-Strait Bridges (Central & North Gorge) & Sunken Crypt Courtyard Pillared Sanctum!
+    const bridges = [this.worldMap.bridgePos];
+    if (this.worldMap.bridgeNorthPos) bridges.push(this.worldMap.bridgeNorthPos);
+    for (let bi = 0; bi < bridges.length; bi++) {
+      const br = bridges[bi];
+      if (br.x > minX - 100 && br.x < maxX + 100 && br.y > minY - 80 && br.y < maxY + 80) {
+        const brCols = Math.max(16, Math.round(34 * propLod));
+        const brRows = Math.max(10, Math.round(22 * propLod));
+        emitPureAscii3DProp({
+          renderer,
+          toScreenX,
+          toScreenY,
+          worldX: br.x,
+          worldY: br.y,
+          worldZ: 0,
+          worldTiltY: WORLD_TILT_Y,
+          cols: brCols,
+          rows: brRows,
+          worldSpanX: 104,
+          worldSpanY: 64,
+          cellScreenSize: 4.2 * (34 / brCols) * gScale,
+          lanternPos: lp,
+          elapsed,
+          cacheKey: `bridge_${bi}_${lodTier}`,
+          buildProp: (buf) => buildBridge3D(buf)
+        });
+      }
     }
 
     const cr = this.worldMap.cryptPos;
@@ -4092,28 +4079,32 @@ export class WorldEngine {
       }
     }
 
-    // 6. Reachable Distant Horizon Landmarks (Visible up to 640u away — walk right into them!)
+    // 6. Northern Crown Obsidian Sanctum Pillars (clean grounded stone arena)
     const ct = this.worldMap.citadelPos;
     if (ct.x > minX - 380 && ct.x < maxX + 380 && ct.y > minY - 460 && ct.y < maxY + 340) {
-      const cCols = Math.max(24, Math.round(58 * propLod));
-      const cRows = Math.max(26, Math.round(62 * propLod));
-      emitPureAscii3DProp({
-        renderer,
-        toScreenX,
-        toScreenY,
-        worldX: ct.x,
-        worldY: ct.y,
-        worldZ: this.worldMap.getTerrainZ(ct.x, ct.y),
-        worldTiltY: WORLD_TILT_Y,
-        cols: cCols,
-        rows: cRows,
-        worldSpanX: 196,
-        worldSpanY: 220,
-        cellScreenSize: 4.8 * (58 / cCols) * gScale,
-        lanternPos: lp,
-        elapsed,
-        buildProp: (buf) => buildCitadelHorizon3D(buf, elapsed)
-      });
+      for (let i = 0; i < 6; i++) {
+        const a = (i / 6) * Math.PI * 2;
+        const px = ct.x + Math.cos(a) * 145;
+        const py = ct.y + Math.sin(a) * 105;
+        emitPureAscii3DProp({
+          renderer,
+          toScreenX,
+          toScreenY,
+          worldX: px,
+          worldY: py,
+          worldZ: this.worldMap.getTerrainZ(px, py),
+          worldTiltY: WORLD_TILT_Y,
+          cols: pilCols,
+          rows: pilRows,
+          worldSpanX: 28,
+          worldSpanY: 72,
+          cellScreenSize: pilCell,
+          lanternPos: lp,
+          elapsed,
+          cacheKey: `pil_crown_${i}_${lodTier}`,
+          buildProp: (buf) => buildPillar3D(buf, 'wyrm')
+        });
+      }
     }
 
     const ob = this.worldMap.obeliskPos;

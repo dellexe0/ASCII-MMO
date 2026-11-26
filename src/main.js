@@ -45,8 +45,6 @@ const dialogueBoxEl = document.getElementById('dialogue-box');
 const dialogueHeaderEl = document.getElementById('dialogue-header');
 const dialogueTextEl = document.getElementById('dialogue-text');
 
-const sizeSlider = document.getElementById('ascii-size-slider');
-const sizeValueEl = document.getElementById('ascii-size-value');
 const autoZoomCheckbox = document.getElementById('auto-zoom-checkbox');
 const autoZoomLabel = document.getElementById('auto-zoom-label');
 
@@ -84,7 +82,7 @@ const cam = {
 
 let worldMap = null;
 let engine = null;
-let baseSize = Number(sizeSlider.value) || 4;
+let baseSize = 4;
 let autoZoom = autoZoomCheckbox.checked;
 let hudVisible = true;
 let dialogueOpen = false;
@@ -449,10 +447,6 @@ craftPreviewCanvas.addEventListener(
   { passive: false }
 );
 
-sizeSlider.addEventListener('input', () => {
-  baseSize = Number(sizeSlider.value);
-  sizeValueEl.textContent = `${baseSize}px`;
-});
 autoZoomCheckbox.addEventListener('change', () => {
   autoZoom = autoZoomCheckbox.checked;
   autoZoomLabel.textContent = autoZoom ? '[ON]' : '[OFF]';

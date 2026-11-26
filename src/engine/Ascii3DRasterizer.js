@@ -745,9 +745,14 @@ export class Ascii3DBuffer {
           const hFur = this.noise[idx] || hash3(worldHitX * 0.6, worldHitY * 0.6, worldHitZ * 0.6);
           lit = clamp(lit * (0.84 + hFur * 0.32), 0.26, 1.0);
         } else if (matType === 5) {
-          // 3D Foliage Leaf Clusters
-          const hLeaf = hash3(Math.round(worldHitX * 0.45), Math.round(worldHitY * 0.45), Math.round(worldHitZ * 0.45));
-          lit = clamp(0.28 + Math.max(0, nz) * 0.42 + wrapM * 0.36 + hLeaf * 0.2, 0.26, 1.0);
+          // 3D Foliage Leaf Clusters (Vivid emerald/autumn visibility, crisp lacy silhouette, NO white-peach bloom!)
+          const hLeaf = hash3(Math.round(worldHitX * 0.65), Math.round(worldHitY * 0.65), Math.round(worldHitZ * 0.65));
+          if (isSil && !isRefl && hLeaf < 0.24 && fresnel > 0.40) continue;
+          lit = clamp(0.26 + Math.max(0, nz) * 0.36 + wrapM * 0.28 + hLeaf * 0.16, 0.24, 0.84);
+        } else if (matType === 8) {
+          // Organic Tree Bark / Timber
+          const hBark = hash3(Math.round(worldHitX * 0.8), Math.round(worldHitY * 0.8), Math.round(worldHitZ * 0.35));
+          lit = clamp(0.26 + wrapM * 0.42 + hBark * 0.22, 0.24, 0.80);
         } else if (matType === 6) {
           // Stark High-Contrast Bone / Ivory Skull / Horn
           lit = clamp(Math.pow(lit, 0.82) * 1.1, 0.28, 1.0);
@@ -761,7 +766,7 @@ export class Ascii3DBuffer {
         let ch;
         if (stoneSeam && lit < 0.75) {
           ch = Math.abs(worldHitZ % 7) < 1.8 ? '═' : '≡';
-        } else if (isSil && !isRefl && matType !== 5 && lit > 0.28 && lit < 0.86) {
+        } else if (isSil && !isRefl && matType !== 5 && matType !== 8 && lit > 0.28 && lit < 0.86) {
           const gx = (tR > 1e8 ? 1 : 0) - (tL > 1e8 ? 1 : 0);
           const gy = (tD > 1e8 ? 1 : 0) - (tU > 1e8 ? 1 : 0);
           if (Math.abs(gx) > Math.abs(gy)) ch = '║';
@@ -771,19 +776,23 @@ export class Ascii3DBuffer {
         } else if (matType === 2 && spec > 0.52) {
           ch = spec > 0.82 ? '✦' : spec > 0.66 ? '◆' : '◈';
         } else if (matType === 2) {
-          const plateRamp = '·:░≡+◊╬#%@◆';
+          const plateRamp = '·:░≡+†◊╬◈#%@✦';
           const ci = Math.min(plateRamp.length - 1, Math.max(0, Math.floor(lit * plateRamp.length)));
           ch = plateRamp[ci];
         } else if (matType === 3) {
-          const stoneRamp = '·:░-▒=+▓#%@';
+          const stoneRamp = '·,:░-≡=+▒▓#%@';
           const ci = Math.min(stoneRamp.length - 1, Math.max(0, Math.floor(lit * stoneRamp.length)));
           ch = stoneRamp[ci];
         } else if (matType === 5) {
-          const leafRamp = ';,*░&▒%#@✦';
+          const leafRamp = '.,\';:^*+&%♣';
           const ci = Math.min(leafRamp.length - 1, Math.max(0, Math.floor(lit * leafRamp.length)));
           ch = leafRamp[ci];
+        } else if (matType === 8) {
+          const barkRamp = '|!/:;#%▓';
+          const ci = Math.min(barkRamp.length - 1, Math.max(0, Math.floor(lit * barkRamp.length)));
+          ch = barkRamp[ci];
         } else if (matType === 4) {
-          const furRamp = '·:;∼≈+*▒%▓@';
+          const furRamp = '·:;∼≈+*ψ▒%▓@';
           const ci = Math.min(furRamp.length - 1, Math.max(0, Math.floor(lit * furRamp.length)));
           ch = furRamp[ci];
         } else if (matType === 6) {
@@ -795,16 +804,23 @@ export class Ascii3DBuffer {
           const ci = Math.min(scaleRamp.length - 1, Math.max(0, Math.floor(lit * scaleRamp.length)));
           ch = scaleRamp[ci];
         } else {
-          const clothRamp = '·:;∼≈░=+▒*#%@';
+          const clothRamp = '·:;∼≈░=+§¤▒*#%@';
           const ci = Math.min(clothRamp.length - 1, Math.max(0, Math.floor(lit * clothRamp.length)));
           ch = clothRamp[ci];
         }
 
-        const shadeBoost = isRefl ? 0.58 : matType === 2 ? 0.42 + lit * 1.02 : 0.48 + lit * 0.92;
-        const silRim = isSil && !isRefl ? (rimColor ? 0.4 : 0.28) : 0;
-        let rOut = r * shadeBoost + warmLight * 0.48 + (rimColor ? rimColor[0] * silRim : silRim * 0.85) + spec * 0.42;
-        let gOut = g * shadeBoost + warmLight * 0.24 + (rimColor ? rimColor[1] * silRim : silRim * 0.92) + spec * 0.44;
-        let bOut = b * (shadeBoost + (isRefl ? 0.12 : 0)) - warmLight * 0.06 + (rimColor ? rimColor[2] * silRim : silRim) + spec * 0.48;
+        const effSpec = matType === 5 || matType === 8 ? 0 : spec;
+        const shadeBoost = isRefl
+          ? 0.58
+          : matType === 5 || matType === 8
+            ? 0.68 + lit * 0.78
+            : matType === 2
+              ? 0.44 + lit * 1.04
+              : 0.48 + lit * 0.92;
+        const silRim = isSil && !isRefl && matType !== 5 && matType !== 8 ? (rimColor ? 0.4 : 0.28) : 0;
+        let rOut = r * shadeBoost + warmLight * (matType === 5 ? 0.24 : 0.48) + (rimColor ? rimColor[0] * silRim : silRim * 0.85) + effSpec * 0.42;
+        let gOut = g * shadeBoost + warmLight * (matType === 5 ? 0.14 : 0.24) + (rimColor ? rimColor[1] * silRim : silRim * 0.92) + effSpec * 0.44;
+        let bOut = b * (shadeBoost + (isRefl ? 0.12 : 0)) - warmLight * 0.06 + (rimColor ? rimColor[2] * silRim : silRim) + effSpec * 0.48;
 
         if (emissive > 0.45) {
           rOut = Math.max(rOut, r * (0.85 + emissive * 0.45));
@@ -820,12 +836,15 @@ export class Ascii3DBuffer {
 
         let drawSize = cellScreenSize;
         if (enableMultiSize && !isRefl) {
-          let sMult = this.sz[idx] || 1.0;
-          if (isSil || isNormalCrease) sMult *= 0.82;
-          else if (emissive > 0.48 || spec > 0.58) sMult *= 1.22 + Math.sin(elapsed * 6.5 + worldHitZ * 0.3) * 0.08;
-          else if (lit > 0.56) sMult *= 1.1;
-          else if (lit < 0.36) sMult *= 0.86;
-          drawSize *= clamp(sMult, 0.65, 1.52);
+          const hSize = hash3(Math.round(worldHitX * 0.7), Math.round(worldHitY * 0.7), Math.round(worldHitZ * 0.7));
+          let sMult = (this.sz[idx] || 1.0) * lerp(0.84, 1.18, hSize);
+          if (isSil || isNormalCrease) sMult *= 0.74;
+          else if (matType === 5) sMult *= lit > 0.54 ? 1.16 : 0.86;
+          else if (emissive > 0.45 || spec > 0.48) sMult *= 1.32 + Math.sin(elapsed * 6.5 + worldHitZ * 0.3) * 0.08;
+          else if (matType === 2 || matType === 4 || matType === 1) sMult *= lit > 0.58 ? 1.18 : lit < 0.36 ? 0.80 : 0.98;
+          else if (lit > 0.56) sMult *= 1.14;
+          else if (lit < 0.36) sMult *= 0.82;
+          drawSize *= clamp(sMult, 0.62, 1.62);
         }
 
         const sxScreen = toScreenX(anchorX + lxLocal) + waveScreenX;
@@ -897,8 +916,11 @@ export class Ascii3DBuffer {
             lit *= 0.72;
           }
         } else if (matType === 5) {
-          const hLeaf = hash3(Math.round(worldHitX * 0.45), Math.round(worldHitY * 0.45), Math.round(worldHitZ * 0.45));
-          lit = clamp(0.28 + Math.max(0, nz) * 0.42 + wrapM * 0.36 + hLeaf * 0.2, 0.26, 1.0);
+          const hLeaf = hash3(Math.round(worldHitX * 0.65), Math.round(worldHitY * 0.65), Math.round(worldHitZ * 0.65));
+          lit = clamp(0.22 + Math.max(0, nz) * 0.34 + wrapM * 0.26 + hLeaf * 0.18, 0.18, 0.78);
+        } else if (matType === 8) {
+          const hBark = hash3(Math.round(worldHitX * 0.8), Math.round(worldHitY * 0.8), Math.round(worldHitZ * 0.35));
+          lit = clamp(0.22 + wrapM * 0.38 + hBark * 0.22, 0.2, 0.74);
         }
 
         const tL = px > 0 ? this.depth[idx - 1] : 1e9;
@@ -907,10 +929,15 @@ export class Ascii3DBuffer {
         const tD = py < rows - 1 ? this.depth[idx + cols] : 1e9;
         const isSil = tL > 1e8 || tR > 1e8 || tU > 1e8 || tD > 1e8;
 
+        if (matType === 5 && isSil && !isRefl && fresnel > 0.36) {
+          const hEdge = hash3(Math.round(worldHitX * 0.65), Math.round(worldHitY * 0.65), Math.round(worldHitZ * 0.65));
+          if (hEdge < 0.34) continue;
+        }
+
         let ch;
         if (stoneSeam && lit < 0.75) {
           ch = Math.abs(worldHitZ % 7) < 1.8 ? '═' : '≡';
-        } else if (isSil && !isRefl && matType !== 5 && lit > 0.28 && lit < 0.84) {
+        } else if (isSil && !isRefl && matType !== 5 && matType !== 8 && lit > 0.28 && lit < 0.84) {
           const gx = (tR > 1e8 ? 1 : 0) - (tL > 1e8 ? 1 : 0);
           const gy = (tD > 1e8 ? 1 : 0) - (tU > 1e8 ? 1 : 0);
           if (Math.abs(gx) > Math.abs(gy)) ch = '║';
@@ -918,11 +945,15 @@ export class Ascii3DBuffer {
           else if (gx !== 0 && gy !== 0) ch = gx * gy > 0 ? '╱' : '╲';
           else ch = '◈';
         } else if (matType === 5) {
-          const leafRamp = ';,*░&▒%#@✦';
+          const leafRamp = '.,\';:^*+&%♣';
           const ci = Math.min(leafRamp.length - 1, Math.max(0, Math.floor(lit * leafRamp.length)));
           ch = leafRamp[ci];
+        } else if (matType === 8) {
+          const barkRamp = '|!/:;#%▓';
+          const ci = Math.min(barkRamp.length - 1, Math.max(0, Math.floor(lit * barkRamp.length)));
+          ch = barkRamp[ci];
         } else if (matType === 3) {
-          const stoneRamp = '·:░-▒=+▓#%@';
+          const stoneRamp = '·,:░-≡=+▒▓#%@';
           const ci = Math.min(stoneRamp.length - 1, Math.max(0, Math.floor(lit * stoneRamp.length)));
           ch = stoneRamp[ci];
         } else {
@@ -934,15 +965,19 @@ export class Ascii3DBuffer {
         const r = this.ar[idx];
         const g = this.ag[idx];
         const b = this.ab[idx];
-        const shadeBoost = isRefl ? 0.58 : 0.52 + lit * 0.88;
-        let baseR = r * shadeBoost + spec * 0.28;
-        let baseG = g * shadeBoost + spec * 0.3;
-        let baseB = b * (shadeBoost + (isRefl ? 0.12 : 0)) + spec * 0.34;
+        const effSpec = matType === 5 || matType === 8 ? 0 : spec;
+        const shadeBoost = isRefl ? 0.58 : (matType === 5 || matType === 8) ? 0.68 + lit * 0.78 : 0.52 + lit * 0.88;
+        let baseR = r * shadeBoost + effSpec * 0.28;
+        let baseG = g * shadeBoost + effSpec * 0.3;
+        let baseB = b * (shadeBoost + (isRefl ? 0.12 : 0)) + effSpec * 0.34;
         if (emissive > 0.45) {
           baseR = Math.max(baseR, r * (0.85 + emissive * 0.45));
           baseG = Math.max(baseG, g * (0.85 + emissive * 0.45));
           baseB = Math.max(baseB, b * (0.85 + emissive * 0.45));
         }
+
+        const hSize = hash3(Math.round(worldHitX * 0.7), Math.round(worldHitY * 0.7), Math.round(worldHitZ * 0.7));
+        const multiS = lerp(0.84, 1.18, hSize) * (isSil ? 0.84 : emissive > 0.5 ? 1.28 : lit > 0.60 ? 1.14 : 0.90);
 
         cells.push({
           py,
@@ -959,7 +994,7 @@ export class Ascii3DBuffer {
           g: baseG,
           b: baseB,
           isSil,
-          sMult: isSil ? 0.86 : emissive > 0.5 ? 1.26 : lit > 0.62 ? 1.1 : 0.96,
+          sMult: multiS,
           glow: emissive > 0.65
         });
       }

@@ -220,9 +220,11 @@ export function buildHeroKnight3D(
     addBoxRot(buf, 14.2, 0, hz + 0.4, 1.8, 6.6, 1.6, goldTrim, yaw);
     addBoxRot(buf, 3.4, 0, hz - 0.3, 1.6, 7.5, 6.2, leatherMat, yaw);
 
-    // Rich Crimson/Gold Barding Caparison Skirt & High Saddle
+    // Rich Crimson/Gold Barding Caparison Skirt, Studded Breast Straps & High Saddle
     addBoxRot(buf, -2.8, 0, hz + 2.4, 12.2, 7.5, 4.4, caparison, yaw);
-    addBoxRot(buf, -2.8, 0, hz - 0.9, 12.4, 7.7, 1.25, goldTrim, yaw);
+    addBoxRot(buf, -2.8, 0, hz - 0.9, 12.4, 7.7, 1.35, goldTrim, yaw);
+    addBoxRot(buf,  9.2, 0, hz + 1.8, 1.5, 7.2, 1.4, goldTrim, yaw);
+    addBoxRot(buf, -12.8, 0, hz + 1.5, 1.4, 7.0, 1.3, goldTrim, yaw);
     addBoxRot(buf, -4.8, 0, hz + 6.8, 2.3, 5.2, 2.1, leatherMat, yaw);
     addBoxRot(buf, 2.8, 0, hz + 6.7, 2.0, 4.9, 1.9, armorMat, yaw);
 
@@ -289,37 +291,46 @@ export function buildHeroKnight3D(
     addBoneRot(buf, -4.2, -2.6, baseZ + 17.5, -14.8, -3.4 + flutter * 0.55, baseZ + (isMounted ? 1.5 : 4.2), 3.4, 2.8, capeDark, yaw);
     addBoneRot(buf, -4.2, 2.6, baseZ + 17.5, -14.8, 3.4 + flutter * 0.55, baseZ + (isMounted ? 1.5 : 4.2), 3.4, 2.8, capeDark, yaw);
 
-    // Sculpted Gothic Cuirass, Gorget Collar, Ornate Waist Belt & Layered Pauldrons
-    addEllipRot(buf, 0, 0, baseZ + 14.2, 5.2, 6.4, 7.0, armorMat, yaw);
-    addBoxRot(buf, 2.8, 0, baseZ + 15.0, 2.8, 4.2, 3.8, trimMat, yaw);
-    addBoxRot(buf, 0.2, 0, baseZ + 9.4, 5.2, 6.3, 1.5, leatherMat, yaw);
-    addBoxRot(buf, 4.9, 0, baseZ + 9.4, 0.9, 1.6, 1.6, goldTrim, yaw);
-    addBoxRot(buf, 0.2, -5.2, baseZ + 7.2, 3.2, 1.8, 2.8, darkSteel, yaw, 0, 0, 0, 0.15);
-    addBoxRot(buf, 0.2, 5.2, baseZ + 7.2, 3.2, 1.8, 2.8, darkSteel, yaw, 0, 0, 0, -0.15);
-    addEllipRot(buf, 0.4, 0, baseZ + 19.6, 3.6, 3.9, 2.0, darkSteel, yaw);
+    // Sculpted Gothic Cuirass, Heraldic Crest, Gorget Collar, Ornate Waist Belt & Spiked Pauldrons
+    addEllipRot(buf, 0, 0, baseZ + 14.2, 5.4, 6.6, 7.2, armorMat, yaw);
+    addBoxRot(buf, 2.8, 0, baseZ + 15.0, 2.9, 4.4, 4.0, trimMat, yaw);
+    addBoxRot(buf, 4.4, 0, baseZ + 15.2, 1.1, 1.15, 3.8, goldTrim, yaw);
+    addBoxRot(buf, 4.4, 0, baseZ + 15.6, 1.1, 3.2, 1.0, goldTrim, yaw);
+    addEllipRot(buf, 4.6, 0, baseZ + 15.6, 1.2, 1.2, 1.2, visorGlow, yaw);
+    addBoxRot(buf, 0.2, 0, baseZ + 9.4, 5.2, 6.4, 1.6, leatherMat, yaw);
+    addBoxRot(buf, 4.9, 0, baseZ + 9.4, 1.0, 1.8, 1.8, goldTrim, yaw);
+    addBoxRot(buf, 0.2, -5.2, baseZ + 7.2, 3.4, 1.9, 3.0, darkSteel, yaw, 0, 0, 0, 0.15);
+    addBoxRot(buf, 0.2, 5.2, baseZ + 7.2, 3.4, 1.9, 3.0, darkSteel, yaw, 0, 0, 0, -0.15);
+    addEllipRot(buf, 0.4, 0, baseZ + 19.6, 3.8, 4.1, 2.2, darkSteel, yaw);
+    addBoneRot(buf, -14.2, -4.6 + flutter * 0.55, baseZ + (isMounted ? 1.5 : 4.2), -14.2, 4.6 + flutter * 0.55, baseZ + (isMounted ? 1.5 : 4.2), 1.45, 1.45, goldTrim, yaw);
 
-    addEllipRot(buf, 0.4, -7.2, baseZ + 18.2, 4.0, 4.0, 3.7, trimMat, yaw);
-    addEllipRot(buf, 0.4, -8.0, baseZ + 16.0, 3.2, 3.2, 2.5, goldTrim, yaw);
-    addEllipRot(buf, 0.4, 7.2, baseZ + 18.2, 4.0, 4.0, 3.7, trimMat, yaw);
-    addEllipRot(buf, 0.4, 8.0, baseZ + 16.0, 3.2, 3.2, 2.5, goldTrim, yaw);
+    addEllipRot(buf, 0.4, -7.4, baseZ + 18.2, 4.2, 4.2, 3.9, trimMat, yaw);
+    addEllipRot(buf, 0.4, -8.2, baseZ + 16.0, 3.4, 3.4, 2.7, goldTrim, yaw);
+    addBoneRot(buf, 0.4, -8.6, baseZ + 19.6, -1.2, -10.8, baseZ + 22.8, 1.3, 0.4, goldTrim, yaw);
+    addEllipRot(buf, 0.4, 7.4, baseZ + 18.2, 4.2, 4.2, 3.9, trimMat, yaw);
+    addEllipRot(buf, 0.4, 8.2, baseZ + 16.0, 3.4, 3.4, 2.7, goldTrim, yaw);
+    addBoneRot(buf, 0.4, 8.6, baseZ + 19.6, -1.2, 10.8, baseZ + 22.8, 1.3, 0.4, goldTrim, yaw);
 
-    // Sallet Great-Helm + Crown Crest + Flowing Plume
-    addEllipRot(buf, 0.6, 0, baseZ + 23.8, 4.8, 4.3, 5.0, armorMat, yaw);
-    addBoxRot(buf, 3.2, 0, baseZ + 21.8, 2.3, 3.2, 1.6, darkSteel, yaw);
-    addBoxRot(buf, 3.6, 0, baseZ + 25.0, 2.5, 3.6, 1.0, trimMat, yaw);
-    addBoxRot(buf, 4.9, 0, baseZ + 23.6, 1.1, 2.8, 0.95, visorGlow, yaw);
-    addBoxRot(buf, 0.1, 0, baseZ + 28.0, 4.2, 1.2, 1.7, goldTrim, yaw);
+    // Sallet Great-Helm + Crown Spikes + Visor Grille + Flowing Plume
+    addEllipRot(buf, 0.6, 0, baseZ + 23.8, 5.0, 4.5, 5.2, armorMat, yaw);
+    addBoxRot(buf, 3.2, 0, baseZ + 21.8, 2.4, 3.4, 1.7, darkSteel, yaw);
+    addBoxRot(buf, 3.6, 0, baseZ + 25.0, 2.6, 3.8, 1.1, trimMat, yaw);
+    addBoxRot(buf, 5.0, 0, baseZ + 23.6, 1.2, 3.0, 1.05, visorGlow, yaw);
+    addBoxRot(buf, 0.1, 0, baseZ + 28.2, 4.4, 1.3, 1.8, goldTrim, yaw);
+    addBoneRot(buf, 1.6, -2.0, baseZ + 27.6, 2.0, -2.6, baseZ + 30.8, 0.9, 0.35, goldTrim, yaw);
+    addBoneRot(buf, 1.6, 2.0, baseZ + 27.6, 2.0, 2.6, baseZ + 30.8, 0.9, 0.35, goldTrim, yaw);
     const plumeWag = Math.sin(elapsed * (isMoving ? 11 : 4)) * 1.6;
-    addBoneRot(buf, -1.8, 0, baseZ + 28.2, -9.8, plumeWag, baseZ + 25.0, 2.2, 1.0, capeBright, yaw);
+    addBoneRot(buf, -1.8, 0, baseZ + 28.4, -10.6, plumeWag, baseZ + 25.0, 2.4, 1.1, capeBright, yaw);
 
-    // Shield Arm & Bold Heraldic Kite Shield
+    // Shield Arm & Bold Heraldic Kite Shield with Center Boss
     const armSw = !isMounted && isMoving ? Math.cos(gaitPhase) * 3.5 : 0;
-    addBoneRot(buf, 0.6, -7.0, baseZ + 16.8, 2.6 + armSw * 0.25, -8.4, baseZ + 14.0, 2.4, 2.0, darkSteel, yaw);
-    addBoneRot(buf, 2.6 + armSw * 0.25, -8.4, baseZ + 14.0, 4.2 + armSw * 0.45, -8.8, baseZ + 11.4, 2.2, 1.9, armorMat, yaw);
-    addBoxRot(buf, 5.4 + armSw * 0.45, -9.4, baseZ + 12.2, 1.5, 5.8, 6.8, darkSteel, yaw, 0, 0, 0, 0.24);
-    addBoxRot(buf, 5.8 + armSw * 0.45, -9.6, baseZ + 12.2, 1.2, 5.0, 5.8, trimMat, yaw, 0, 0, 0, 0.24);
-    addBoxRot(buf, 6.2 + armSw * 0.45, -9.8, baseZ + 12.2, 1.0, 1.1, 5.0, goldTrim, yaw, 0, 0, 0, 0.24);
-    addBoxRot(buf, 6.2 + armSw * 0.45, -9.8, baseZ + 12.2, 1.0, 4.0, 1.1, goldTrim, yaw, 0, 0, 0, 0.24);
+    addBoneRot(buf, 0.6, -7.0, baseZ + 16.8, 2.6 + armSw * 0.25, -8.4, baseZ + 14.0, 2.5, 2.1, darkSteel, yaw);
+    addBoneRot(buf, 2.6 + armSw * 0.25, -8.4, baseZ + 14.0, 4.2 + armSw * 0.45, -8.8, baseZ + 11.4, 2.3, 2.0, armorMat, yaw);
+    addBoxRot(buf, 5.4 + armSw * 0.45, -9.4, baseZ + 12.2, 1.6, 6.2, 7.2, darkSteel, yaw, 0, 0, 0, 0.24);
+    addBoxRot(buf, 5.8 + armSw * 0.45, -9.6, baseZ + 12.2, 1.3, 5.4, 6.2, trimMat, yaw, 0, 0, 0, 0.24);
+    addBoxRot(buf, 6.2 + armSw * 0.45, -9.8, baseZ + 12.2, 1.1, 1.2, 5.4, goldTrim, yaw, 0, 0, 0, 0.24);
+    addBoxRot(buf, 6.2 + armSw * 0.45, -9.8, baseZ + 12.2, 1.1, 4.4, 1.2, goldTrim, yaw, 0, 0, 0, 0.24);
+    addEllipRot(buf, 6.6 + armSw * 0.45, -9.9, baseZ + 12.2, 1.1, 1.3, 1.3, visorGlow, yaw);
 
     // Sword Arm & Gleaming Broad Greatsword
     const swing = slashProgress > 0 ? Math.sin(slashProgress * Math.PI) : 0;
@@ -380,18 +391,26 @@ export function buildBaseMob3D(buf, e, elapsed) {
     addBoneRot(buf, kxR, 3.3, 6.2 + bob * 0.5 + fzR * 0.6, -stride, 3.3, fzR + 0.9, 1.45, 1.25, boneBright, yaw);
     addBoxRot(buf, -stride + 1.0, 3.3, fzR + 0.65, 1.7, 1.2, 0.85, boneBright, yaw);
 
-    addEllipRot(buf, 0, 0, 12.6 + bob, 3.2, 4.2, 2.0, boneDark, yaw);
-    addBoneRot(buf, -0.5, 0, 12.8 + bob, 0, 0, 23.0 + bob, 2.2, 1.9, boneDark, yaw);
-    addEllipRot(buf, 0.5, 0, 18.8 + bob, 3.6, 4.4, 4.2, boneBright, yaw);
-    addBoxRot(buf, 0.2, 0, 22.0 + bob, 2.6, 5.2, 1.5, ironRust, yaw);
-    addEllipRot(buf, 0.4, -5.2, 21.9 + bob, 2.6, 2.4, 2.2, ironRust, yaw);
-    addEllipRot(buf, 0.4, 5.2, 21.9 + bob, 2.6, 2.4, 2.2, ironRust, yaw);
+    addEllipRot(buf, 0, 0, 12.6 + bob, 3.4, 4.4, 2.2, boneDark, yaw);
+    addBoneRot(buf, -0.5, 0, 12.8 + bob, 0, 0, 23.0 + bob, 2.3, 2.0, boneDark, yaw);
+    // Individual carved ribcage arches + collar armor
+    for (let rib = 0; rib < 3; rib++) {
+      const rz = 16.0 + rib * 2.2 + bob;
+      addBoxRot(buf, 0.8, 0, rz, 3.2, 4.6 - rib * 0.2, 0.7, boneBright, yaw);
+    }
+    addBoxRot(buf, 0.2, 0, 22.0 + bob, 2.8, 5.4, 1.6, ironRust, yaw);
+    addEllipRot(buf, 0.4, -5.4, 21.9 + bob, 2.8, 2.6, 2.4, ironRust, yaw);
+    addEllipRot(buf, 0.4, 5.4, 21.9 + bob, 2.8, 2.6, 2.4, ironRust, yaw);
 
-    addEllipRot(buf, 0.6, 0, 27.2 + bob, 4.4, 4.1, 4.3, boneBright, yaw);
-    addBoxRot(buf, 2.6, 0, 24.4 + bob, 2.3, 2.6, 1.4, boneDark, yaw);
-    addBoxRot(buf, 4.4, -1.5, 27.2 + bob, 1.1, 1.15, 1.15, eyeGlow, yaw);
-    addBoxRot(buf, 4.4, 1.5, 27.2 + bob, 1.1, 1.15, 1.15, eyeGlow, yaw);
-    if (e.isElite) addBoxRot(buf, 0.6, 0, 31.8 + bob, 3.4, 3.4, 1.2, matRgb(1.0, 0.82, 0.26, 2, 0.6), yaw);
+    addEllipRot(buf, 0.6, 0, 27.4 + bob, 4.6, 4.3, 4.5, boneBright, yaw);
+    addBoxRot(buf, 2.8, 0, 24.4 + bob, 2.5, 2.8, 1.5, boneDark, yaw);
+    addBoxRot(buf, 4.6, -1.6, 27.4 + bob, 1.25, 1.25, 1.25, eyeGlow, yaw);
+    addBoxRot(buf, 4.6, 1.6, 27.4 + bob, 1.25, 1.25, 1.25, eyeGlow, yaw);
+    if (e.isElite) {
+      addBoxRot(buf, 0.6, 0, 32.0 + bob, 3.6, 3.6, 1.3, matRgb(1.0, 0.82, 0.26, 2, 0.65), yaw);
+      addBoneRot(buf, 0.6, -2.4, 32.5 + bob, 0.6, -3.4, 36.2 + bob, 0.9, 0.35, matRgb(1.0, 0.82, 0.26, 2, 0.65), yaw);
+      addBoneRot(buf, 0.6, 2.4, 32.5 + bob, 0.6, 3.4, 36.2 + bob, 0.9, 0.35, matRgb(1.0, 0.82, 0.26, 2, 0.65), yaw);
+    }
 
     const windLift = e.windup > 0 ? 7.5 : 0;
     if (e.kind === 'skeleton_archer') {
